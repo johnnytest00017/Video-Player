@@ -39,20 +39,21 @@ SOFTWARE.
   }
   .app { width: 100%; position: relative; background: #000; overflow: hidden; }
   .stage {
+    --split: 45%;
     position: relative; isolation: isolate; width: 100%;
     height: 100vh; height: 100dvh; min-height: 600px;
     background: #000; overflow: hidden;
   }
   /* Solid black corner patches under the rounded bottom corners, in case any glow still leaks past the clip. */
   .stage::before {
-    content: ''; position: absolute; left: 0; right: 0; top: calc(45% - 28px); height: 28px;
+    content: ''; position: absolute; left: 0; right: 0; top: calc(var(--split) - 28px); height: 28px;
     z-index: 3; pointer-events: none;
     background:
       radial-gradient(circle 28px at 28px 0, transparent 27px, #000 28px) left top / 28px 28px no-repeat,
       radial-gradient(circle 28px at 0 0, transparent 27px, #000 28px) right top / 28px 28px no-repeat;
   }
   .video-wrap {
-    position: absolute; inset: 0 0 auto; height: 45%;
+    position: absolute; inset: 0 0 auto; height: var(--split);
     overflow: hidden; border-radius: 0 0 28px 28px;
     clip-path: inset(0 round 0 0 28px 28px);   /* Android WebView lets the blurred glow leak past border-radius; clip-path cuts it for real */
     background: #000; display: flex; align-items: center; justify-content: center; z-index: 2;
@@ -184,24 +185,18 @@ SOFTWARE.
   .crop-btn { appearance: none; border: 1px solid #555; background: rgba(20,20,20,.88); color: #eee;
     border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 12px; cursor: pointer; }
   .crop-btn.primary { background: #ffcf5a; border-color: #ffcf5a; color: #111; font-weight: 650; }
-  /* Shorts / vertical-video viewing mode */
-  .shorts-toggle[aria-pressed="true"] { color: #ff4545; background: rgba(255,69,69,.12); }
-  .stage.shorts-mode { background: #000; }
-  .stage.shorts-mode .video-wrap {
-    height: min(88%, 760px); width: auto; aspect-ratio: 9 / 16;
-    inset: 50% auto auto 50%; transform: translate(-50%, -50%);
-    border-radius: 22px; clip-path: none;
-  }
-  .stage.shorts-mode .fg-layer { align-items: center; justify-content: center; }
-  .stage.shorts-mode #video { width: auto; height: min(88%, 760px); max-width: 100%; aspect-ratio: 9 / 16; }
-  .stage.shorts-mode .text-section { left: 8%; right: 8%; top: 48%; height: 22%; }
-  .stage.fs.shorts-mode .video-wrap { height: 100%; width: auto; max-width: 100%; border-radius: 0; }
-  .stage.fs.shorts-mode #video { height: 100%; max-width: 100%; }
+  /* ---------- vertical (shorts / reels / TikTok) mode: much taller player, subtitles overlay the picture ---------- */
+  .stage.vert { --split: 78%; }
+  .stage.vert .video-vignette { display: block;
+    background: linear-gradient(to bottom, transparent 0%, transparent 55%, rgba(0,0,0,.6) 100%); }
+  .stage.vert .text-section { top: auto; height: auto; bottom: calc(clamp(120px, 17%, 175px) + 125px); }
+  .stage.vert .text-section h2 { font-size: clamp(20px, 5.4vw, 26px); margin-bottom: 6px; }
   /* ---------- fullscreen mode: video takes the whole screen, text + controls overlay it ---------- */
   .stage.fs .video-wrap { height: 100%; border-radius: 0; clip-path: none; }
   .stage.fs::before { display: none; }
   .stage.fs .video-vignette { background: linear-gradient(to bottom, rgba(0,0,0,.25) 0%, transparent 18%, transparent 45%, rgba(0,0,0,.72) 100%); }
   .stage.fs .text-section { top: auto; height: auto; bottom: 200px; }
+  .stage.fs .video-vignette { display: block; }
   .stage.fs .controls { bottom: 48px; }
   .hidden { display: none !important; }
   @media (max-height: 760px) {
@@ -268,11 +263,6 @@ SOFTWARE.
     <input id="extFile" type="file" accept="video/*">
     <section class="controls">
     <div class="utility-row">
-      <button class="settings-toggle shorts-toggle" id="shortsToggle" aria-label="Shorts / vertical video mode" aria-pressed="false" title="Shorts / vertical video">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect x="7" y="2.5" width="10" height="19" rx="2"></rect><path d="M10 5h4M11 18.5h2"></path>
-        </svg>
-      </button>
       <button class="settings-toggle" id="settingsToggle" aria-label="Settings" aria-expanded="false" title="Settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="3"></circle>
@@ -288,6 +278,10 @@ SOFTWARE.
         <div class="setting-line">
           <div><div class="setting-name">Video resize</div><div class="setting-value" id="resizeValue">Best fit</div></div>
           <button class="setting-action" id="resizeNext">Best fit ›</button>
+        </div>
+        <div class="setting-line">
+          <div><div class="setting-name">Vertical videos</div><div class="setting-value" id="vertValue">Auto (tall)</div></div>
+          <button class="setting-action" id="vertNext">Auto ›</button>
         </div>
         <div class="setting-line">
           <div><div class="setting-name">Crop</div><div class="setting-value" id="cropValue">Off</div></div>
@@ -355,14 +349,6 @@ SOFTWARE.
   const duration = document.getElementById('duration');
   const hint = document.getElementById('hint');
   const stage = document.querySelector('.stage');
-  const shortsToggle = document.getElementById('shortsToggle');
-  shortsToggle.addEventListener('click', () => {
-    const enabled = !stage.classList.contains('shorts-mode');
-    stage.classList.toggle('shorts-mode', enabled);
-    shortsToggle.setAttribute('aria-pressed', String(enabled));
-    shortsToggle.setAttribute('title', enabled ? 'Exit Shorts mode' : 'Shorts / vertical video');
-    shortsToggle.setAttribute('aria-label', enabled ? 'Exit Shorts / vertical video mode' : 'Shorts / vertical video mode');
-  });
   const videoWrap = document.querySelector('.video-wrap');
   const settingsToggle = document.getElementById('settingsToggle');
   const settingsPanel = document.getElementById('settingsPanel');
@@ -395,7 +381,7 @@ SOFTWARE.
     video.style.aspectRatio = '';
     video.style.objectPosition = 'center bottom';
     video.style.objectFit = 'contain';
-    videoWrap.style.height = fsOn ? '100%' : '45%';
+    videoWrap.style.height = fsOn ? '100%' : 'var(--split)';
     if (mode === '4:3') {
       video.style.width = '100%';
       video.style.height = 'auto';
@@ -428,6 +414,28 @@ SOFTWARE.
     applyCrop();
     updateEditor();
   }
+
+  // Portrait clips (shorts / reels / TikTok): enlarge the player area. vertMode: 'auto' | 'off'
+  let vertMode = 'auto';
+  function updateOrientation() {
+    const vw = video.videoWidth, vh = video.videoHeight;
+    const isVert = vertMode === 'auto' && vw > 0 && vh > vw * 1.1;
+    if (stage.classList.contains('vert') !== isVert) {
+      stage.classList.toggle('vert', isVert);
+      applyResizeMode();
+      tick();
+    }
+  }
+  video.addEventListener('loadedmetadata', updateOrientation);
+  video.addEventListener('resize', updateOrientation);
+  const vertNext = document.getElementById('vertNext');
+  const vertValue = document.getElementById('vertValue');
+  vertNext.addEventListener('click', () => {
+    vertMode = vertMode === 'auto' ? 'off' : 'auto';
+    vertValue.textContent = vertMode === 'auto' ? 'Auto (tall)' : 'Off';
+    vertNext.textContent = vertMode === 'auto' ? 'Auto ›' : 'Off ›';
+    updateOrientation();
+  });
 
   /* ====================== CROP ENGINE ====================== */
   // Where the video frame is actually drawn inside its layer (handles contain / cover).
