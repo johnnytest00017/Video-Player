@@ -28,6 +28,7 @@ SOFTWARE.
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="theme-color" content="#000000">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ambient Video Player</title>
 <style>
@@ -171,8 +172,8 @@ SOFTWARE.
   .crop-box { position: absolute; pointer-events: none; }
   .crop-line { position: absolute; z-index: 2; touch-action: none; cursor: grab; }
   .crop-line:active { cursor: grabbing; }
-  .crop-line::before { content: ''; position: absolute; background: #ffcf5a; box-shadow: 0 0 0 1px rgba(0,0,0,.55); }
-  .crop-line::after { content: ''; position: absolute; background: #ffcf5a; border-radius: 9px; box-shadow: 0 0 0 1px rgba(0,0,0,.55); }
+  .crop-line::before { content: ''; position: absolute; background: var(--accent); box-shadow: 0 0 0 1px rgba(0,0,0,.55); }
+  .crop-line::after { content: ''; position: absolute; background: var(--accent); border-radius: 9px; box-shadow: 0 0 0 1px rgba(0,0,0,.55); }
   .crop-line.h { left: 0; right: 0; height: 40px; margin-top: -20px; }
   .crop-line.h::before { left: 0; right: 0; top: 19px; height: 2px; }
   .crop-line.h::after { left: 20%; top: 11px; width: 46px; height: 18px; transform: translateX(-50%); }
@@ -183,7 +184,7 @@ SOFTWARE.
     display: flex; gap: 8px; }
   .crop-btn { appearance: none; border: 1px solid #555; background: rgba(20,20,20,.88); color: #eee;
     border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 12px; cursor: pointer; }
-  .crop-btn.primary { background: #ffcf5a; border-color: #ffcf5a; color: #111; font-weight: 650; }
+  .crop-btn.primary { background: var(--accent); border-color: var(--accent); color: #111; font-weight: 650; }
   /* ---------- fullscreen mode: video takes the whole screen, text + controls overlay it ---------- */
   .stage.fs .video-wrap { height: 100%; border-radius: 0; clip-path: none; }
   .stage.fs::before { display: none; }
@@ -199,6 +200,113 @@ SOFTWARE.
   @media (max-width: 380px) {
     .text-section h2 { font-size: 21px; }
     .description { font-size: 12.5px; }
+  }
+
+  /* =====================================================================
+     MODERN THEME — deep navy-black, glass cards, lime accent
+     (later rules intentionally override the base styles above)
+     ===================================================================== */
+  :root {
+    --accent: #a8f36a; --accent-ink: #0a1405;
+    --ink: #f2f6fb; --muted: #8d9bb0;
+    --glass: rgba(255,255,255,.06); --glass-b: rgba(255,255,255,.11);
+  }
+  html, body { -webkit-tap-highlight-color: transparent; }
+  button, label { -webkit-user-select: none; user-select: none; }
+  button { font-family: inherit; transition: transform .15s ease, background .2s, border-color .2s, color .2s, box-shadow .2s; }
+  button:active { transform: scale(.94); }
+
+  /* black behind the picture (so the rounded corners stay black), a soft navy glow toward the bottom */
+  .stage { background:
+      radial-gradient(ellipse 80% 28% at 50% 100%, rgba(168,243,106,.07), transparent 70%),
+      linear-gradient(to bottom, #000 0, #000 46%, #080d18 100%); }
+
+  /* darkens the very top so the white status-bar icons stay readable on bright scenes */
+  .video-wrap::after { content: ''; position: absolute; z-index: 2; left: 0; right: 0; top: 0; height: 84px;
+    pointer-events: none; background: linear-gradient(to bottom, rgba(0,0,0,.5), transparent); }
+  .stage.fs .video-wrap::after { height: 110px; }
+
+  /* subtitle card */
+  .text-section { top: 47%; height: 22%; left: 4%; right: 4%; padding: 14px 20px;
+    border-radius: 24px; border: 1px solid var(--glass-b);
+    background: linear-gradient(180deg, rgba(20,30,48,.94), rgba(9,14,25,.94));
+    box-shadow: 0 16px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06);
+    transition: opacity .35s ease; }
+  .stage:not(.ready) .text-section { opacity: 0; pointer-events: none; }
+  .text-section h2 { color: var(--ink); font-weight: 650; text-shadow: none; }
+  .description { color: #b3c0d4; text-shadow: none; max-width: 360px; }
+
+  /* controls */
+  .controls { left: 5%; right: 5%; bottom: clamp(36px, 6%, 72px); }
+  .utility-row { gap: 10px; margin: 0 0 12px; }
+  .settings-toggle { width: 42px; height: 42px; color: #d3dcea; background: var(--glass);
+    border: 1px solid var(--glass-b); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+  .settings-toggle:hover { background: rgba(255,255,255,.1); color: #fff; }
+  .settings-toggle[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); background: rgba(168,243,106,.1); }
+  .settings-toggle svg { width: 21px; height: 21px; }
+
+  .seek-row { gap: 12px; }
+  .time { color: var(--muted); font-size: 12px; font-weight: 500; min-width: 36px; }
+  .time:last-child { text-align: right; }
+  #seek { -webkit-appearance: none; appearance: none; height: 28px; background: transparent; margin: 0; --p: 0%; }
+  #seek::-webkit-slider-runnable-track { height: 5px; border-radius: 99px;
+    background: linear-gradient(to right, var(--accent) var(--p), rgba(255,255,255,.14) var(--p)); }
+  #seek::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; margin-top: -7.5px;
+    border-radius: 50%; background: #fff; border: 0; box-shadow: 0 0 0 5px rgba(168,243,106,.22), 0 2px 8px rgba(0,0,0,.5); }
+  #seek::-moz-range-track { height: 5px; border-radius: 99px; background: rgba(255,255,255,.14); }
+  #seek::-moz-range-progress { height: 5px; border-radius: 99px; background: var(--accent); }
+  #seek::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 0; box-shadow: 0 0 0 5px rgba(168,243,106,.22); }
+  input[type=range] { accent-color: var(--accent); }
+
+  .transport { margin-top: 14px; padding: 9px 18px; border-radius: 34px; border: 1px solid var(--glass-b);
+    background: var(--glass); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+  .skip { display: flex; align-items: center; gap: 8px; color: #aebbd0; font-size: 13px; font-weight: 500; padding: 10px 0; }
+  .skip:first-child { justify-content: flex-start; }
+  .skip:last-child { justify-content: flex-end; }
+  .skip svg { width: 22px; height: 22px; flex: none; }
+  .skip:hover { color: #fff; }
+  .center-play { width: 64px; height: 64px; border-radius: 50%; background: var(--accent); color: var(--accent-ink);
+    box-shadow: 0 8px 26px rgba(168,243,106,.35), inset 0 1px 0 rgba(255,255,255,.5); }
+  .center-play svg { width: 22px; height: 26px; }
+  .center-play:not(.x) svg:only-child { margin-left: 0; }
+  .hint { color: var(--muted); font-size: 12px; margin: 12px 0 0; }
+
+  .play-overlay { width: 76px; height: 76px; background: rgba(10,16,28,.42); border: 1px solid rgba(255,255,255,.2);
+    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); filter: none; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+
+  /* settings sheet */
+  .settings-panel { bottom: 54px; width: min(310px, 92vw); border-radius: 22px; border: 1px solid var(--glass-b);
+    background: rgba(11,17,29,.96); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+    box-shadow: 0 18px 50px rgba(0,0,0,.65); }
+  .setting-name { color: #e9eff8; font-weight: 500; }
+  .setting-value { color: var(--muted); }
+  .setting-action, .setting-select { background: var(--glass); border: 1px solid var(--glass-b); border-radius: 999px;
+    padding: 8px 14px; color: #e9eff8; }
+  .setting-action:hover { border-color: var(--accent); color: var(--accent); }
+  .setting-note { color: #5f6c80; }
+
+  /* import screen */
+  .upload-prompt { gap: 12px; padding: 24px;
+    background: radial-gradient(circle at 50% 28%, rgba(168,243,106,.16), transparent 55%),
+                radial-gradient(ellipse at center, #111a2c 0%, #070b14 70%, #000 100%); }
+  .upload-prompt svg { stroke: var(--accent); }
+  .upload-prompt svg path { fill: var(--accent); }
+  .upload-prompt h1 { font-size: clamp(22px, 6vw, 28px); font-weight: 700; color: var(--ink); }
+  .upload-prompt p { color: var(--muted); font-size: 13px; max-width: 290px; }
+  .upload-btn { background: var(--glass); border: 1px solid var(--glass-b); color: #e9eff8; padding: 12px 18px; font-weight: 500; }
+  .upload-btn:hover { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.3); }
+  .upload-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 650;
+    box-shadow: 0 8px 24px rgba(168,243,106,.28); }
+  .crop-btn.primary { color: var(--accent-ink); }
+
+  /* fullscreen: card turns into frosted glass over the picture */
+  .stage.fs .text-section { bottom: 250px; background: rgba(8,12,22,.55);
+    -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+  .stage.fs .controls { bottom: 40px; }
+  @media (max-height: 760px) {
+    .text-section { top: 46%; height: 24%; }
+    .controls { bottom: 18px; }
+    .center-play { width: 56px; height: 56px; }
   }
 </style>
 </head>
@@ -236,7 +344,7 @@ SOFTWARE.
         <h1>Bring your video to life</h1>
         <p>Import a video and an SRT subtitle file. Optionally add an extended (outpainted) version of the video for the background.</p>
         <div class="upload-actions">
-          <label class="upload-btn" for="videoFile">＋ Import video</label>
+          <label class="upload-btn primary" for="videoFile">＋ Import video</label>
           <label class="upload-btn" for="srtFile">＋ Import SRT</label>
           <label class="upload-btn" for="extFile">＋ Extended video (optional)</label>
         </div>
@@ -313,11 +421,11 @@ SOFTWARE.
       <span class="time" id="duration">0:00</span>
     </div>
     <div class="transport">
-      <button class="skip" id="backward">‹‹ Backward</button>
+      <button class="skip" id="backward" aria-label="Back 10 seconds"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m11 17-5-5 5-5M18 17l-5-5 5-5"/></svg><span>Backward</span></button>
       <button class="center-play" id="playPause" aria-label="Play video">
         <svg viewBox="0 0 24 28" aria-hidden="true"><path d="M3 2.5Q3 0 5.3 1.4L22 12.2Q24 13.5 22 14.8L5.3 26.6Q3 28 3 25.5Z" fill="currentColor"/></svg>
       </button>
-      <button class="skip" id="forward">Forward ››</button>
+      <button class="skip" id="forward" aria-label="Forward 10 seconds"><span>Forward</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13 17 5-5-5-5M6 17l5-5-5-5"/></svg></button>
     </div>
     <p class="hint" id="hint">Load both files to begin.</p>
     </section>
@@ -679,6 +787,7 @@ SOFTWARE.
   function syncReadyState() {
     const ready = videoLoaded && srtLoaded;
     prompt.classList.toggle('hidden', ready);
+    document.querySelector('.stage').classList.toggle('ready', ready);
     hint.textContent = ready ? ' ' : (!videoLoaded && !srtLoaded ? 'Load both files to begin.' : 'Now import the other file.');
     if (ready) hint.classList.add('hidden'); else hint.classList.remove('hidden');
     updateSubtitle();
@@ -757,7 +866,9 @@ SOFTWARE.
     subTrans.style.opacity = trans ? '1' : '0';
   }
   function setPlayIcon(playing) {
-    playPause.innerHTML = '<svg viewBox="0 0 24 28" aria-hidden="true"><path d="M3 2.5Q3 0 5.3 1.4L22 12.2Q24 13.5 22 14.8L5.3 26.6Q3 28 3 25.5Z" fill="currentColor"/></svg>';
+    playPause.innerHTML = playing
+      ? '<svg viewBox="0 0 24 28" aria-hidden="true"><rect x="4" y="2" width="6" height="24" rx="2" fill="currentColor"/><rect x="14" y="2" width="6" height="24" rx="2" fill="currentColor"/></svg>'
+      : '<svg viewBox="0 0 24 28" aria-hidden="true"><path d="M3 2.5Q3 0 5.3 1.4L22 12.2Q24 13.5 22 14.8L5.3 26.6Q3 28 3 25.5Z" fill="currentColor"/></svg>';
     playPause.setAttribute('aria-label', playing ? 'Pause video' : 'Play video');
     bigPlay.classList.toggle('visible', !playing && videoLoaded && srtLoaded);
   }
@@ -779,11 +890,14 @@ SOFTWARE.
   });
   document.getElementById('backward').addEventListener('click', () => { video.currentTime = Math.max(0, video.currentTime - 10); });
   document.getElementById('forward').addEventListener('click', () => { if (Number.isFinite(video.duration)) video.currentTime = Math.min(video.duration, video.currentTime + 10); });
+  const paintSeek = () => seek.style.setProperty('--p', (Number(seek.value) / 10) + '%');   // lime fill behind the thumb
+  seek.addEventListener('input', paintSeek);
   seek.addEventListener('input', () => { if (Number.isFinite(video.duration) && video.duration > 0) video.currentTime = (Number(seek.value) / 1000) * video.duration; });
   video.addEventListener('loadedmetadata', () => { duration.textContent = fmt(video.duration); });
   video.addEventListener('timeupdate', () => {
     currentTime.textContent = fmt(video.currentTime);
     if (Number.isFinite(video.duration) && video.duration > 0 && !seek.matches(':active')) seek.value = String(Math.round(video.currentTime / video.duration * 1000));
+    paintSeek();
     updateSubtitle();
     const now = performance.now();
   });
