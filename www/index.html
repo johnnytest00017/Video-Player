@@ -186,11 +186,16 @@ SOFTWARE.
     border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 12px; cursor: pointer; }
   .crop-btn.primary { background: #ffcf5a; border-color: #ffcf5a; color: #111; font-weight: 650; }
   /* ---------- vertical (shorts / reels / TikTok) mode: much taller player, subtitles overlay the picture ---------- */
-  .stage.vert { --split: 78%; }
+  .stage.vert { --split: 70%; }
+  .stage.vert .video-wrap { border-radius: 0 0 28px 28px; clip-path: inset(0 round 0 0 28px 28px); }
   .stage.vert .video-vignette { display: block;
-    background: linear-gradient(to bottom, transparent 0%, transparent 55%, rgba(0,0,0,.6) 100%); }
-  .stage.vert .text-section { top: auto; height: auto; bottom: calc(clamp(120px, 17%, 175px) + 125px); }
+    background: linear-gradient(to bottom, transparent 0%, transparent 60%, rgba(0,0,0,.6) 100%); }
+  /* subtitles sit inside the picture, just above its rounded bottom edge */
+  .stage.vert .text-section { top: auto; height: auto; bottom: calc(100% - var(--split) + 22px); padding: 6px; }
   .stage.vert .text-section h2 { font-size: clamp(20px, 5.4vw, 26px); margin-bottom: 6px; }
+  /* settings + transport sit directly below the picture; no fullscreen button for vertical clips */
+  .stage.vert .controls { top: calc(var(--split) + 14px); bottom: auto; }
+  .stage.vert #fsToggle { display: none; }
   /* ---------- fullscreen mode: video takes the whole screen, text + controls overlay it ---------- */
   .stage.fs .video-wrap { height: 100%; border-radius: 0; clip-path: none; }
   .stage.fs::before { display: none; }
@@ -280,7 +285,7 @@ SOFTWARE.
           <button class="setting-action" id="resizeNext">Best fit ›</button>
         </div>
         <div class="setting-line">
-          <div><div class="setting-name">Vertical videos</div><div class="setting-value" id="vertValue">Auto (tall)</div></div>
+          <div><div class="setting-name">Layout</div><div class="setting-value" id="vertValue">Auto</div></div>
           <button class="setting-action" id="vertNext">Auto ›</button>
         </div>
         <div class="setting-line">
@@ -416,12 +421,16 @@ SOFTWARE.
   }
 
   // Portrait clips (shorts / reels / TikTok): enlarge the player area. vertMode: 'auto' | 'off'
-  let vertMode = 'auto';
+  let vertMode = 'auto';            // 'auto' | 'vert' | 'land'
+  let ambProfileHook = null;       // set by the ambient engine: switches the glow preset for the layout
   function updateOrientation() {
     const vw = video.videoWidth, vh = video.videoHeight;
-    const isVert = vertMode === 'auto' && vw > 0 && vh > vw * 1.1;
+    const portrait = vw > 0 && vh > vw * 1.1;
+    const isVert = vertMode === 'vert' ? true : vertMode === 'land' ? false : portrait;
     if (stage.classList.contains('vert') !== isVert) {
+      if (isVert && fsOn) setFullscreen(false);
       stage.classList.toggle('vert', isVert);
+      if (ambProfileHook) ambProfileHook(isVert ? 'vert' : 'land');
       applyResizeMode();
       tick();
     }
@@ -430,10 +439,11 @@ SOFTWARE.
   video.addEventListener('resize', updateOrientation);
   const vertNext = document.getElementById('vertNext');
   const vertValue = document.getElementById('vertValue');
+  const VERT_LABELS = { auto: 'Auto', vert: 'Vertical', land: 'Landscape' };
   vertNext.addEventListener('click', () => {
-    vertMode = vertMode === 'auto' ? 'off' : 'auto';
-    vertValue.textContent = vertMode === 'auto' ? 'Auto (tall)' : 'Off';
-    vertNext.textContent = vertMode === 'auto' ? 'Auto ›' : 'Off ›';
+    vertMode = vertMode === 'auto' ? 'vert' : vertMode === 'vert' ? 'land' : 'auto';
+    vertValue.textContent = VERT_LABELS[vertMode];
+    vertNext.textContent = VERT_LABELS[vertMode] + ' ›';
     updateOrientation();
   });
 
@@ -839,10 +849,17 @@ SOFTWARE.
     flicker: 0, blending: 1, blendSmooth: 80,
     top: 1, right: 1, bottom: 1, left: 1
   };
+  // Vertical preset: a wider, brighter glow so the side bars beside a portrait clip are filled with colour
+  const AMBI_VERT_DEFAULTS = Object.assign({}, AMBI_DEFAULTS, {
+    blur: 45, edge: 20, brightness: 112, saturation: 128, fadeStart: 30, fadeCurve: 50
+  });
+  let ambProfile = 'land';
+  const ambKey = p => p === 'vert' ? 'ambilightSettings.vert.v1' : AMBI_KEY;
+  const ambDefaults = p => p === 'vert' ? AMBI_VERT_DEFAULTS : AMBI_DEFAULTS;
   const amb = Object.assign({}, AMBI_DEFAULTS);
   try { Object.assign(amb, JSON.parse(localStorage.getItem(AMBI_KEY) || '{}')); } catch (e) {}
   try { localStorage.removeItem('ambSettings'); } catch (e) {}                      // settings of the old ambient
-  const saveAmb = () => { try { localStorage.setItem(AMBI_KEY, JSON.stringify(amb)); } catch (e) {} };
+  const saveAmb = () => { try { localStorage.setItem(ambKey(ambProfile), JSON.stringify(amb)); } catch (e) {} };
 
   const INNER = 2;          // how many scaled-down layers sit inside the picture (they smooth the join with the picture's edge)
   const MAXPOS = 10;        // most rings outside the picture in "Fit player" mode (keeps it light on phones)
@@ -1311,11 +1328,26 @@ SOFTWARE.
     } else if (c[0] === 'reset') {
       const { line } = mkLine('Ambient settings', 'back to the defaults');
       const b = Object.assign(document.createElement('button'), { type: 'button', className: 'setting-action', textContent: 'Reset' });
-      b.addEventListener('click', () => { Object.assign(amb, AMBI_DEFAULTS); ambiSync.forEach(f => f()); ambiChanged(); });
+      b.addEventListener('click', () => { Object.assign(amb, ambDefaults(ambProfile)); ambiSync.forEach(f => f()); ambiChanged(); });
       line.append(b); ambiCtl.append(line);
     }
   }
   ambiSync.forEach(f => f());
+
+  // Switch the glow preset when the layout changes (landscape <-> vertical); each keeps its own saved settings
+  ambProfileHook = (p) => {
+    if (p === ambProfile) return;
+    saveAmb();
+    ambProfile = p;
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(ambKey(p)) || '{}'); } catch (e) {}
+    const keepBg = amb.bg;
+    Object.assign(amb, ambDefaults(p), saved);
+    if (!('bg' in saved)) amb.bg = keepBg;
+    ambiSync.forEach(f => f());
+    ambiChanged();
+  };
+  updateOrientation();
 
   applyBg();
   applyResizeMode();
