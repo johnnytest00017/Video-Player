@@ -43,9 +43,18 @@ SOFTWARE.
     height: 100vh; height: 100dvh; min-height: 600px;
     background: #000; overflow: hidden;
   }
+  /* Solid black corner patches under the rounded bottom corners, in case any glow still leaks past the clip. */
+  .stage::before {
+    content: ''; position: absolute; left: 0; right: 0; top: calc(45% - 28px); height: 28px;
+    z-index: 3; pointer-events: none;
+    background:
+      radial-gradient(circle 28px at 28px 0, transparent 27px, #000 28px) left top / 28px 28px no-repeat,
+      radial-gradient(circle 28px at 0 0, transparent 27px, #000 28px) right top / 28px 28px no-repeat;
+  }
   .video-wrap {
     position: absolute; inset: 0 0 auto; height: 45%;
     overflow: hidden; border-radius: 0 0 28px 28px;
+    clip-path: inset(0 round 0 0 28px 28px);   /* Android WebView lets the blurred glow leak past border-radius; clip-path cuts it for real */
     background: #000; display: flex; align-items: center; justify-content: center; z-index: 2;
     isolation: isolate;
   }
@@ -176,7 +185,8 @@ SOFTWARE.
     border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 12px; cursor: pointer; }
   .crop-btn.primary { background: #ffcf5a; border-color: #ffcf5a; color: #111; font-weight: 650; }
   /* ---------- fullscreen mode: video takes the whole screen, text + controls overlay it ---------- */
-  .stage.fs .video-wrap { height: 100%; border-radius: 0; }
+  .stage.fs .video-wrap { height: 100%; border-radius: 0; clip-path: none; }
+  .stage.fs::before { display: none; }
   .stage.fs .video-vignette { background: linear-gradient(to bottom, rgba(0,0,0,.25) 0%, transparent 18%, transparent 45%, rgba(0,0,0,.72) 100%); }
   .stage.fs .text-section { top: auto; height: auto; bottom: 200px; }
   .stage.fs .controls { bottom: 48px; }
