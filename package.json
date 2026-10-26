@@ -2,7 +2,7 @@
   "name": "ambient-video-player-android",
   "version": "1.0.0",
   "private": true,
-  "description": "Ambient Video Player packaged with Capacitor for Android",
+  "description": "Ambient video player with frame control, packaged with Capacitor for Android",
   "scripts": {
     "android:sync": "cap sync android",
     "android:build": "cd android && ./gradlew assembleDebug"

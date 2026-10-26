@@ -1,0 +1,43 @@
+/* ============ On-screen editors: crop lines + frame (move / zoom / display height) ============ */
+.editor-bar {
+  position: absolute; z-index: 3; left: 50%; bottom: 14px; transform: translateX(-50%);
+  display: flex; gap: 8px; white-space: nowrap;
+}
+
+/* ---------- crop ---------- */
+.crop-editor { position: absolute; inset: 0; z-index: 7; touch-action: none; }
+.crop-shade { position: absolute; background: rgba(0,0,0,.66); pointer-events: none; }
+.crop-box { position: absolute; pointer-events: none; }
+.crop-line { position: absolute; z-index: 2; touch-action: none; cursor: grab; }
+.crop-line:active { cursor: grabbing; }
+.crop-line::before { content: ''; position: absolute; background: var(--accent); box-shadow: 0 0 0 1px rgba(0,0,0,.55); }
+.crop-line::after { content: ''; position: absolute; background: var(--accent); border-radius: 9px; box-shadow: 0 0 0 1px rgba(0,0,0,.55); }
+.crop-line.h { left: 0; right: 0; height: 44px; margin-top: -22px; }
+.crop-line.h::before { left: 0; right: 0; top: 21px; height: 2px; }
+.crop-line.h::after { left: 20%; top: 13px; width: 46px; height: 18px; transform: translateX(-50%); }
+.crop-line.v { top: 0; bottom: 0; width: 44px; margin-left: -22px; }
+.crop-line.v::before { top: 0; bottom: 0; left: 21px; width: 2px; }
+.crop-line.v::after { top: 28%; left: 13px; width: 18px; height: 46px; transform: translateY(-50%); }
+
+/* ---------- frame editor ---------- */
+.adjust-editor { position: absolute; inset: 0; z-index: 7; pointer-events: none; }
+.adj-box { position: absolute; border: 1.5px dashed rgba(255,207,90,.85); border-radius: 2px; box-shadow: 0 0 0 1px rgba(0,0,0,.4); }
+.adj-cross { position: absolute; inset: 0; opacity: .5; pointer-events: none;
+  background:
+    linear-gradient(rgba(255,255,255,.35), rgba(255,255,255,.35)) center / 1px 100% no-repeat,
+    linear-gradient(rgba(255,255,255,.35), rgba(255,255,255,.35)) center / 100% 1px no-repeat;
+  display: none; }
+.adjust-editor.dragging .adj-cross { display: block; }
+.adj-hint {
+  position: absolute; top: calc(10px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
+  padding: 7px 14px; border-radius: 999px; background: rgba(0,0,0,.6); color: var(--text-2);
+  font-size: 12px; white-space: nowrap; transition: opacity .4s; pointer-events: none;
+}
+.adjust-editor .editor-bar { pointer-events: auto; bottom: 34px; }
+.disp-handle {
+  position: absolute; z-index: 4; left: 50%; bottom: 0; width: 120px; height: 34px; margin-left: -60px;
+  display: flex; align-items: center; justify-content: center; pointer-events: auto; touch-action: none; cursor: ns-resize;
+}
+.disp-handle span { width: 54px; height: 5px; border-radius: 3px; background: var(--accent); box-shadow: 0 0 0 1px rgba(0,0,0,.5); }
+.stage.full .disp-handle { display: none; }
+.stage.full .adjust-editor .editor-bar { bottom: auto; top: calc(48px + env(safe-area-inset-top, 0px)); }

@@ -1,68 +1,62 @@
-# Ambient Video Player — Android APK (Capacitor)
+# Video Player
 
-This repository wraps the supplied `ambient_video_player_v32.html` as a Capacitor Android app. The HTML is placed at `www/index.html`.
+Android video player (Capacitor) with an **ambient glow**, subtitles, black-bar crop and full control over how the video sits in its **display**.
 
-## Build APK with GitHub Actions (recommended)
+## Features
 
-1. Create a **new empty GitHub repository** (for example `ambient-video-player-android`). Do not add a README or license on GitHub, because this project already contains them.
-2. In Termux, install the basics and allow storage access:
+- **Frame control** — the display and the video are separate: set the display height, then zoom, move and stretch the video inside it. Pinch to zoom, two fingers to move; *Move & zoom* mode adds one-finger drag and a handle to resize the display. Whatever the video does not cover is filled by the ambient background.
+- **Ambient background** — Ambilight glow, live Stretch fill, an optional Extended (outpainted) video, or off.
+- **Crop** — automatic black-bar detection and four draggable cut lines.
+- **Subtitles** — SRT with Arabic main line + translation line, size and delay controls.
+- **Cinema layout** — fullscreen or landscape hides the controls while playing; the Android back button closes panels first.
+- Double-tap left / right to skip, middle for fullscreen; keyboard shortcuts on desktop (Space, ← →, F).
 
-   ```sh
-   pkg update
-   pkg install git nodejs-lts
-   termux-setup-storage
-   ```
+## Project layout
 
-3. Extract this project ZIP into a folder Termux can access, then `cd` into the extracted `ambient-capacitor-project` folder. If the ZIP is in Downloads, one possible method is:
-
-   ```sh
-   mkdir -p ~/projects
-   cd ~/projects
-   unzip ~/storage/downloads/ambient-capacitor-project.zip
-   cd ambient-capacitor-project
-   ```
-
-   If you extracted it somewhere else, use that folder instead.
-
-4. Set your Git identity if you have not already:
-
-   ```sh
-   git config --global user.name "Your Name"
-   git config --global user.email "you@example.com"
-   ```
-
-5. Connect it to your new GitHub repository. Replace `YOUR-USERNAME` with your GitHub username:
-
-   ```sh
-   git init
-   git branch -M main
-   git add .
-   git commit -m "Add Ambient Video Player Capacitor app"
-   git remote add origin https://github.com/YOUR-USERNAME/ambient-video-player-android.git
-   git push -u origin main
-   ```
-
-   GitHub may ask you to authenticate. For HTTPS Git operations, use a GitHub personal access token when prompted for a password; do not paste your token into chat or commit it to the repository.
-
-6. On GitHub, open **Actions** → **Build Android APK** → **Run workflow**. You can also let it run automatically after pushing to `main`.
-7. When the workflow finishes successfully, open that run, scroll to **Artifacts**, and download `ambient-video-player-debug-apk`. Extract it and install `app-debug.apk` on your Android phone. Android may ask you to allow installation from the app you used to open it.
-
-## Updating the app
-
-Replace `www/index.html` with your updated HTML file, then commit and push:
-
-```sh
-git add www/index.html
-git commit -m "Update player"
-git push
+```
+www/
+  index.html          markup only
+  css/                base · player · editors · sheet
+  js/
+    main.js           entry point
+    layout.js         frame engine (crop + fit + zoom/move/stretch → one transform)
+    frame.js          gestures, Move & zoom mode, display handle
+    crop.js           crop editor + auto-detect
+    ambilight.js · stretch.js · extended.js · background.js    backgrounds + draw loop
+    subtitles.js · media.js · player.js                        content + transport
+    settings.js       tabbed settings sheet
+    state.js · ui.js · native.js · util.js · dom.js · config.js
+assets/               app icon (SVG + PNG masters)
+.github/              CI build + Android theme / icon patch scripts
 ```
 
-GitHub Actions will build a fresh APK. This workflow produces a **debug APK for personal testing**, not a Play Store release. Keep the same package ID (`com.ambientvideoplayer.app`) if you want future release builds to update the installed app.
+## Build the APK (GitHub Actions)
+
+Push to `main` (or run **Build Android APK** manually under *Actions*). Download the `video-player-debug-apk` artifact and install `app-debug.apk`.
+
+## Update from Termux
+
+```sh
+cd ~/projects/Video-Player
+unzip -o ~/storage/downloads/<new-zip>.zip -d .
+git add -A
+git commit -m "Describe the change"
+git push origin main
+```
+
+Use a GitHub personal access token as the password when asked; never commit it.
+
+## Develop in a browser
+
+```sh
+cd www && python3 -m http.server 8000     # then open http://localhost:8000
+```
+
+ES modules need a server (not `file://`).
 
 ## Notes
 
-- The app name is **Ambient Video Player**.
-- Package ID: `com.ambientvideoplayer.app`.
-- Capacitor packages the existing HTML; it does not rewrite the player UI.
-- Test local video and SRT picking, playback, fullscreen, crop tools, and Ambilight on the device. WebView behavior can differ from a desktop browser.
-- The HTML currently uses browser local storage for Ambilight settings. Capacitor's WebView supports local storage, but data may be cleared if the app is uninstalled.
+- Package ID `com.ambientvideoplayer.app` stays fixed so new builds update the installed app.
+- This workflow builds a **debug** APK for personal use.
+- Settings (display, ambient, preferences) are kept in the WebView's local storage.
+- Third-party code: see `THIRD_PARTY_NOTICES.md`.
