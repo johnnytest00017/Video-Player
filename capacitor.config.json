@@ -2,5 +2,12 @@
   "appId": "com.ambientvideoplayer.app",
   "appName": "Video Player",
   "webDir": "www",
-  "bundledWebRuntime": false
+  "bundledWebRuntime": false,
+  "plugins": {
+    "StatusBar": {
+      "overlaysWebView": true,
+      "style": "LIGHT",
+      "backgroundColor": "#000000"
+    }
+  }
 }
