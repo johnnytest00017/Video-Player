@@ -2,12 +2,15 @@
   "appId": "com.ambientvideoplayer.app",
   "appName": "Video Player",
   "webDir": "www",
-  "bundledWebRuntime": false,
+  "backgroundColor": "#000000",
+  "android": {
+    "backgroundColor": "#000000"
+  },
   "plugins": {
-    "StatusBar": {
-      "overlaysWebView": true,
-      "style": "LIGHT",
-      "backgroundColor": "#000000"
+    "SystemBars": {
+      "insetsHandling": "disable",
+      "style": "DARK",
+      "hidden": false
     }
   }
 }

@@ -1,4 +1,3 @@
-
 name: Build Android APK
 
 on:
@@ -38,52 +37,14 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
-      - name: Configure edge-to-edge system bars
-        run: |
-          node -e '
-          const fs = require("fs");
-          const p = "capacitor.config.json";
-          const c = JSON.parse(fs.readFileSync(p, "utf8"));
-          c.plugins = c.plugins || {};
-          c.plugins.SystemBars = {
-            insetsHandling: "css",
-            style: "DARK",
-            hidden: false
-          };
-          fs.writeFileSync(p, JSON.stringify(c, null, 2) + "\n");
-          '
-
       - name: Add Android platform
         run: npx cap add android
 
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Set Android window background to black
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-
-          root = Path("android/app/src/main/res")
-          files = list(root.glob("values*/styles.xml"))
-
-          if not files:
-              raise SystemExit("No Android styles.xml files found")
-
-          for path in files:
-              text = path.read_text()
-              if "android:windowBackground" not in text:
-                  text = re.sub(
-                      r"(<style\b[^>]*\bname=\"AppTheme\"[^>]*>)",
-                      r'\1\n        <item name="android:windowBackground">#000000</item>',
-                      text,
-                      count=1
-                  )
-                  path.write_text(text)
-              print(f"Checked {path}")
-
-          PY
+      - name: Make Android window black and system bars transparent
+        run: python3 .github/scripts/patch_android_theme.py
 
       - name: Build debug APK
         run: |
@@ -98,4 +59,3 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
-
