@@ -1,0 +1,1281 @@
+<!doctype html>
+<!--
+  Ambient light engine ported from youtube-ambilight by Wessel Kroos
+  https://github.com/WesselKroos/youtube-ambilight
+
+MIT License
+
+Copyright (c) 2017 Wessel Kroos
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ambient Video Player</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; color: #eee; background: #000;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  .app { width: 100%; position: relative; background: #000; overflow: hidden; }
+  .stage {
+    position: relative; isolation: isolate; width: 100%;
+    height: 100vh; height: 100dvh; min-height: 600px;
+    background: #000; overflow: hidden;
+  }
+  .video-wrap {
+    position: absolute; inset: 0 0 auto; height: 45%;
+    overflow: hidden; border-radius: 0 0 28px 28px;
+    background: #000; display: flex; align-items: center; justify-content: center; z-index: 2;
+    isolation: isolate;
+  }
+  /* Ambilight glow (engine ported from WesselKroos/youtube-ambilight, MIT): a stack of scaled copies of the picture,
+     blurred by CSS, faded out by a black shadow gradient. Sits behind the real video. */
+  .ambi { position: absolute; inset: 0; overflow: hidden; pointer-events: none; background: #000; isolation: isolate; }   /* black base: the noise overlay keeps pure black black */
+  .ambi-filter { position: absolute; inset: 0; }                       /* the blur / brightness / contrast / saturation filter lives here */
+  .ambi-proj { position: absolute; left: 0; top: 0; width: 0; height: 0; }  /* sized + placed over the picture by JS */
+  .ambi-proj canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; background: none; }
+  .ambi-noise { position: absolute; inset: 0; opacity: 0; mix-blend-mode: overlay; background-size: 128px 128px; image-rendering: pixelated; }
+  .dir-btn { padding: 6px 8px; }
+  /* Extended-video background: an outpainted version of the clip, sized/placed by JS behind the real picture. */
+  #stretchCv { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: none; background: #000;
+    transform: scale(1.06); pointer-events: none; }
+  #extVideo { position: absolute; display: none; left: 0; top: 0; width: 0; height: 0; max-width: none; max-height: none;
+    object-fit: fill; background: #000; pointer-events: none; }
+  .ext-btns { display: flex; gap: 6px; }
+  .dir-btn[aria-pressed="false"] { opacity: .4; }
+
+  .layer { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    transform-origin: 0 0; }
+  .ambient-layer { z-index: 0; pointer-events: none; }
+  .fg-layer { z-index: 1; align-items: flex-end; }
+  #video {
+    position: relative; width: 100%; height: 100%;
+    object-fit: contain; object-position: center; background: transparent; display: block;
+  }
+  /* Off in normal mode so the picture is never dimmed or hazed; only used in fullscreen for text legibility. */
+  .video-vignette {
+    position: absolute; z-index: 2; inset: 0; pointer-events: none; display: none;
+    border-radius: inherit;
+  }
+  .stage.fs .video-vignette { display: block; }
+  .upload-prompt { z-index: 4; }
+  .text-section {
+    position: absolute; top: 44%; left: 5%; right: 5%; height: 25%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 12px 6px; z-index: 3;
+  }
+  /* main subtitle line (the SRT) */
+  .text-section h2 {
+    margin: 0 0 10px; color: #f7f7f7; font-size: clamp(22px, 6vw, 30px);
+    line-height: 1.35; letter-spacing: -.01em; font-weight: 700;
+    text-shadow: 0 2px 18px rgba(0,0,0,.95), 0 0 2px rgba(0,0,0,.6);
+    transition: opacity .22s ease; min-height: 1.35em;
+  }
+  /* translation, smaller, underneath */
+  .description {
+    color: #cfcfcf; font-size: clamp(13px, 3.6vw, 16px); line-height: 1.45;
+    max-width: 340px; margin: 0; text-shadow: 0 2px 12px #000;
+    transition: opacity .22s ease; min-height: 1.45em;
+  }
+  .upload-prompt {
+    position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 9px; padding: 18px; text-align: center;
+    background: radial-gradient(ellipse at center, #191919 0%, #080808 64%, #000 100%);
+  }
+  .upload-prompt h1 { font-size: clamp(20px, 5vw, 26px); margin: 4px 0 0; letter-spacing: -.04em; }
+  .upload-prompt p { margin: 0; max-width: 270px; color: #999; font-size: 12px; line-height: 1.45; }
+  .upload-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 8px; }
+  .upload-btn {
+    appearance: none; border: 1px solid #505050; background: rgba(55,55,55,.7); color: #eee;
+    border-radius: 999px; padding: 11px 16px; font-size: 13px; cursor: pointer;
+    transition: background .2s, border-color .2s;
+  }
+  .upload-btn:hover { background: #333; border-color: #888; }
+  input[type=file] { display: none; }
+  .play-overlay {
+    position: absolute; z-index: 3; left: 50%; top: 50%; transform: translate(-50%,-50%);
+    width: 66px; height: 66px; border: 0; border-radius: 50%; background: rgba(0,0,0,.25);
+    color: white; display: none; align-items: center; justify-content: center; cursor: pointer;
+    filter: drop-shadow(0 2px 10px rgba(0,0,0,.45));
+  }
+  .play-overlay svg { width: 27px; height: 31px; margin-left: 4px; }
+  .play-overlay.visible { display: flex; }
+  .subtitle-area { display: none; }
+  .subtitle { display: none; }
+  .controls { position: absolute; z-index: 4; left: 6%; right: 6%; bottom: clamp(120px, 17%, 175px); padding: 0; }
+  .utility-row { display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin: 0 0 5px; position: relative; }
+  .settings-toggle { width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center;
+    color: #999; background: transparent; border: 0; cursor: pointer; border-radius: 50%; }
+  .settings-toggle:hover, .settings-toggle[aria-expanded="true"] { color: #eee; background: #1a1a1a; }
+  .settings-toggle svg { width: 23px; height: 23px; }
+  .settings-panel { position: absolute; z-index: 8; right: 0; bottom: 42px; width: min(270px, 90vw);
+    max-height: min(62vh, 380px); overflow-y: auto;
+    padding: 15px; border: 1px solid #303030; border-radius: 16px; background: rgba(18,18,18,.97);
+    box-shadow: 0 12px 36px rgba(0,0,0,.55); }
+  .setting-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; }
+  .setting-name { color: #ddd; font-size: 13px; }
+  .setting-value { color: #999; font-size: 12px; }
+  .setting-action, .setting-select { color: #eee; background: #252525; border: 1px solid #414141;
+    border-radius: 9px; padding: 8px 10px; font: inherit; font-size: 12px; cursor: pointer; }
+  .setting-select { max-width: 112px; }
+  .setting-note { color: #666; font-size: 11px; line-height: 1.4; margin: 9px 0 0; }
+  .seek-row { display: flex; align-items: center; gap: 12px; }
+  input[type=range] { flex: 1; min-width: 0; accent-color: #aaa; cursor: pointer; }
+  .time { color: #777; font-size: 11px; font-variant-numeric: tabular-nums; }
+  .transport { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-top: 15px; }
+  .skip {
+    color: #858585; background: transparent; border: 0; font-size: 14px; padding: 9px 0; cursor: pointer;
+  }
+  .skip:first-child { text-align: left; }
+  .skip:last-child { text-align: right; }
+  .skip:hover { color: #ddd; }
+  .center-play {
+    border: 0; background: transparent; color: #f3f3f3; width: 54px; height: 48px;
+    display: flex; justify-content: center; align-items: center; cursor: pointer;
+  }
+  .center-play svg { width: 21px; height: 25px; }
+  .hint { text-align: center; color: #555; font-size: 11px; margin: 10px 0 0; }
+  /* ---------- crop editor: 2 vertical + 2 horizontal cut lines ---------- */
+  .crop-editor { position: absolute; inset: 0; z-index: 6; touch-action: none; }
+  .crop-shade { position: absolute; background: rgba(0,0,0,.66); pointer-events: none; }
+  .crop-box { position: absolute; pointer-events: none; }
+  .crop-line { position: absolute; z-index: 2; touch-action: none; cursor: grab; }
+  .crop-line:active { cursor: grabbing; }
+  .crop-line::before { content: ''; position: absolute; background: #ffcf5a; box-shadow: 0 0 0 1px rgba(0,0,0,.55); }
+  .crop-line::after { content: ''; position: absolute; background: #ffcf5a; border-radius: 9px; box-shadow: 0 0 0 1px rgba(0,0,0,.55); }
+  .crop-line.h { left: 0; right: 0; height: 40px; margin-top: -20px; }
+  .crop-line.h::before { left: 0; right: 0; top: 19px; height: 2px; }
+  .crop-line.h::after { left: 20%; top: 11px; width: 46px; height: 18px; transform: translateX(-50%); }
+  .crop-line.v { top: 0; bottom: 0; width: 40px; margin-left: -20px; }
+  .crop-line.v::before { top: 0; bottom: 0; left: 19px; width: 2px; }
+  .crop-line.v::after { top: 28%; left: 11px; width: 18px; height: 46px; transform: translateY(-50%); }
+  .crop-bar { position: absolute; z-index: 3; left: 50%; bottom: 10px; transform: translateX(-50%);
+    display: flex; gap: 8px; }
+  .crop-btn { appearance: none; border: 1px solid #555; background: rgba(20,20,20,.88); color: #eee;
+    border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 12px; cursor: pointer; }
+  .crop-btn.primary { background: #ffcf5a; border-color: #ffcf5a; color: #111; font-weight: 650; }
+  /* ---------- fullscreen mode: video takes the whole screen, text + controls overlay it ---------- */
+  .stage.fs .video-wrap { height: 100%; border-radius: 0; }
+  .stage.fs .video-vignette { background: linear-gradient(to bottom, rgba(0,0,0,.25) 0%, transparent 18%, transparent 45%, rgba(0,0,0,.72) 100%); }
+  .stage.fs .text-section { top: auto; height: auto; bottom: 200px; }
+  .stage.fs .controls { bottom: 48px; }
+  .hidden { display: none !important; }
+  @media (max-height: 760px) {
+    .text-section { top: 41%; height: 24%; }
+    .text-section h2 { margin-bottom: 8px; }
+    .controls { bottom: 100px; }
+  }
+  @media (max-width: 380px) {
+    .text-section h2 { font-size: 21px; }
+    .description { font-size: 12.5px; }
+  }
+</style>
+</head>
+<body>
+<main class="app">
+  <section class="stage" aria-label="Ambient video player">
+    <div class="video-wrap">
+      <div class="layer ambient-layer" id="ambientLayer">
+        <canvas id="stretchCv" aria-hidden="true"></canvas>
+        <video id="extVideo" muted playsinline preload="auto" aria-hidden="true"></video>
+        <div class="ambi" id="ambi" aria-hidden="true"><div class="ambi-filter" id="ambiFilter"><div class="ambi-proj" id="ambiProj"></div></div><div class="ambi-noise" id="ambiNoise"></div></div>
+      </div>
+      <div class="layer fg-layer" id="fgLayer">
+        <video id="video" playsinline preload="metadata"></video>
+      </div>
+      <div class="video-vignette"></div>
+      <div class="crop-editor hidden" id="cropEditor" aria-label="Crop editor">
+        <div class="crop-shade" id="shT"></div><div class="crop-shade" id="shB"></div>
+        <div class="crop-shade" id="shL"></div><div class="crop-shade" id="shR"></div>
+        <div class="crop-box" id="cropBox"></div>
+        <div class="crop-line h" id="lineT" data-edge="t" title="Drag to cut the top"></div>
+        <div class="crop-line h" id="lineB" data-edge="b" title="Drag to cut the bottom"></div>
+        <div class="crop-line v" id="lineL" data-edge="l" title="Drag to cut the left"></div>
+        <div class="crop-line v" id="lineR" data-edge="r" title="Drag to cut the right"></div>
+        <div class="crop-bar">
+          <button class="crop-btn" id="edAuto">Auto</button>
+          <button class="crop-btn" id="edReset">Reset</button>
+          <button class="crop-btn primary" id="edDone">Done</button>
+        </div>
+      </div>
+      <div class="upload-prompt" id="uploadPrompt">
+        <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="1.35" aria-hidden="true">
+          <rect x="3" y="4" width="18" height="16" rx="3"></rect><path d="m10 9 5 3-5 3z" fill="#aaa" stroke="none"></path>
+        </svg>
+        <h1>Bring your video to life</h1>
+        <p>Import a video and an SRT subtitle file. Optionally add an extended (outpainted) version of the video for the background.</p>
+        <div class="upload-actions">
+          <label class="upload-btn" for="videoFile">＋ Import video</label>
+          <label class="upload-btn" for="srtFile">＋ Import SRT</label>
+          <label class="upload-btn" for="extFile">＋ Extended video (optional)</label>
+        </div>
+      </div>
+      <button class="play-overlay" id="bigPlay" aria-label="Play video">
+        <svg viewBox="0 0 24 28" aria-hidden="true"><path d="M3 2.5Q3 0 5.3 1.4L22 12.2Q24 13.5 22 14.8L5.3 26.6Q3 28 3 25.5Z" fill="currentColor"/></svg>
+      </button>
+    </div>
+    <div class="subtitle" id="subtitle" aria-live="polite"></div>
+    <section class="text-section" aria-label="Subtitles">
+      <h2 id="subMain" dir="auto"></h2>
+      <p class="description" id="description" dir="auto"></p>
+    </section>
+    <input id="videoFile" type="file" accept="video/*">
+    <input id="srtFile" type="file" accept=".srt,application/x-subrip,text/plain">
+    <input id="extFile" type="file" accept="video/*">
+    <section class="controls">
+    <div class="utility-row">
+      <button class="settings-toggle" id="settingsToggle" aria-label="Settings" aria-expanded="false" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.7a8 8 0 0 1-1.8 1l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.8-1l-1.7.7-1.4-2.4 1.4-1.1a7.5 7.5 0 0 1 0-2l-1.4-1.1 1.4-2.4 1.7.7a8 8 0 0 1 1.8-1l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.8 1l1.7-.7 1.4 2.4-1.4 1.1a7.5 7.5 0 0 1 0 2Z" transform="translate(-1 -1) scale(.98)"></path>
+        </svg>
+      </button>
+      <button class="settings-toggle" id="fsToggle" aria-label="Fullscreen" title="Fullscreen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" id="fsIcon">
+          <path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"></path>
+        </svg>
+      </button>
+      <div class="settings-panel hidden" id="settingsPanel" role="dialog" aria-label="Player settings">
+        <div class="setting-line">
+          <div><div class="setting-name">Video resize</div><div class="setting-value" id="resizeValue">Best fit</div></div>
+          <button class="setting-action" id="resizeNext">Best fit ›</button>
+        </div>
+        <div class="setting-line">
+          <div><div class="setting-name">Crop</div><div class="setting-value" id="cropValue">Off</div></div>
+          <button class="setting-action" id="cropEdit">Edit lines</button>
+        </div>
+        <div class="setting-line">
+          <span class="setting-name">Auto-detect bars</span>
+          <button class="setting-action" id="autoCrop">Detect</button>
+        </div>
+        <div class="setting-line">
+          <span class="setting-name">Reset crop</span>
+          <button class="setting-action" id="resetCrop">Reset</button>
+        </div>
+        <div class="setting-line">
+          <div><div class="setting-name">Extended video</div><div class="setting-value" id="extValue">None</div></div>
+          <div class="ext-btns">
+            <button class="setting-action" id="extImport">Import</button>
+            <button class="setting-action" id="extRemove">Remove</button>
+          </div>
+        </div>
+        <div id="ambiControls"></div>
+        <div class="setting-line">
+          <label class="setting-name" for="speedSelect">Playback speed</label>
+          <select class="setting-select" id="speedSelect" aria-label="Playback speed">
+            <option value="0.25">0.25×</option>
+            <option value="0.5">0.5×</option>
+            <option value="0.75">0.75×</option>
+            <option value="1" selected>1× Normal</option>
+            <option value="1.25">1.25×</option>
+            <option value="1.5">1.5×</option>
+            <option value="1.75">1.75×</option>
+            <option value="2">2×</option>
+          </select>
+        </div>
+        <p class="setting-note">Background: pick Ambilight (glow), Stretch fill (live non-linear stretch of the picture, no extra file) or Extended video (an outpainted copy of your clip, kept in sync behind the real picture; adjust Zoom / Shift if the middle does not line up). Edit lines: drag the 2 horizontal and 2 vertical lines to cut any side (the glow is built from the cropped picture). Ambient light: Spread mode “Fit player” stretches the glow to the edges of the player; “Manual” uses the Spread slider. Edge size, fade start and fade curve shape how the glow falls off.</p>
+      </div>
+    </div>
+    <div class="seek-row">
+      <span class="time" id="currentTime">0:00</span>
+      <input id="seek" type="range" min="0" max="1000" value="0" aria-label="Seek video">
+      <span class="time" id="duration">0:00</span>
+    </div>
+    <div class="transport">
+      <button class="skip" id="backward">‹‹ Backward</button>
+      <button class="center-play" id="playPause" aria-label="Play video">
+        <svg viewBox="0 0 24 28" aria-hidden="true"><path d="M3 2.5Q3 0 5.3 1.4L22 12.2Q24 13.5 22 14.8L5.3 26.6Q3 28 3 25.5Z" fill="currentColor"/></svg>
+      </button>
+      <button class="skip" id="forward">Forward ››</button>
+    </div>
+    <p class="hint" id="hint">Load both files to begin.</p>
+    </section>
+  </section>
+</main>
+<script>
+(() => {
+  const video = document.getElementById('video');
+  const videoFile = document.getElementById('videoFile');
+  const srtFile = document.getElementById('srtFile');
+  const prompt = document.getElementById('uploadPrompt');
+  const subtitleEl = document.getElementById('subtitle');
+  const bigPlay = document.getElementById('bigPlay');
+  const playPause = document.getElementById('playPause');
+  const seek = document.getElementById('seek');
+  const currentTime = document.getElementById('currentTime');
+  const duration = document.getElementById('duration');
+  const hint = document.getElementById('hint');
+  const stage = document.querySelector('.stage');
+  const videoWrap = document.querySelector('.video-wrap');
+  const settingsToggle = document.getElementById('settingsToggle');
+  const settingsPanel = document.getElementById('settingsPanel');
+  const resizeNext = document.getElementById('resizeNext');
+  const resizeValue = document.getElementById('resizeValue');
+  const speedSelect = document.getElementById('speedSelect');
+  const cropEdit = document.getElementById('cropEdit');
+  const fgLayer = document.getElementById('fgLayer');
+  const cropEditor = document.getElementById('cropEditor');
+  const cropValue = document.getElementById('cropValue');
+  const autoCropButton = document.getElementById('autoCrop');
+  const resetCropButton = document.getElementById('resetCrop');
+  let autoCropTimer = null;
+  let videoURL = null, cues = [], videoLoaded = false, srtLoaded = false;
+  const resizeModes = ['4:3', '16:9', 'Fill', 'Best fit', 'Fit screen', 'Center'];
+  let resizeIndex = 3;
+  let editing = false;
+  let fsOn = false;
+  const crop = { t: 0, r: 0, b: 0, l: 0 };   // fractions (0-1) cut from each side of the video frame
+  const MIN_KEEP = .1;                        // always keep at least 10% of the frame
+
+  function applyResizeMode() {
+    const mode = editing ? 'Best fit' : resizeModes[resizeIndex];
+    resizeValue.textContent = mode;
+    resizeNext.textContent = mode + ' ›';
+    video.style.width = '100%';
+    video.style.height = '100%';
+    video.style.maxWidth = '';
+    video.style.maxHeight = '';
+    video.style.aspectRatio = '';
+    video.style.objectPosition = 'center bottom';
+    video.style.objectFit = 'contain';
+    videoWrap.style.height = fsOn ? '100%' : '45%';
+    if (mode === '4:3') {
+      video.style.width = '100%';
+      video.style.height = 'auto';
+      video.style.aspectRatio = '4 / 3';
+      video.style.objectFit = 'contain';
+    } else if (mode === '16:9') {
+      video.style.width = '100%';
+      video.style.height = 'auto';
+      video.style.aspectRatio = '16 / 9';
+      video.style.objectFit = 'contain';
+    } else if (mode === 'Fill') {
+      video.style.width = '100%';
+      video.style.height = '100%';
+      video.style.objectFit = 'cover';
+    } else if (mode === 'Best fit') {
+      video.style.width = '100%';
+      video.style.height = '100%';
+      video.style.objectFit = 'contain';
+    } else if (mode === 'Fit screen') {
+      video.style.width = '100%';
+      video.style.height = '100%';
+      video.style.objectFit = 'contain';
+    } else if (mode === 'Center') {
+      video.style.width = 'auto';
+      video.style.height = 'auto';
+      video.style.maxWidth = '100%';
+      video.style.maxHeight = '100%';
+      video.style.objectFit = 'contain';
+    }
+    applyCrop();
+    updateEditor();
+  }
+
+  /* ====================== CROP ENGINE ====================== */
+  // Where the video frame is actually drawn inside its layer (handles contain / cover).
+  function fgFrame() {
+    const vw = video.videoWidth, vh = video.videoHeight;
+    const ex = video.offsetLeft, ey = video.offsetTop, ew = video.offsetWidth, eh = video.offsetHeight;
+    if (!vw || !vh || !ew || !eh) return null;
+    const cover = video.style.objectFit === 'cover';
+    const k = cover ? Math.max(ew / vw, eh / vh) : Math.min(ew / vw, eh / vh);
+    const w = vw * k, h = vh * k;
+    return { x: ex + (ew - w) / 2, y: ey + (eh - h), w, h, bx: ex, by: ey, bw: ew, bh: eh };   // object-position: center bottom
+  }
+  const hasCrop = () => crop.t > .001 || crop.r > .001 || crop.b > .001 || crop.l > .001;
+
+  // Where the (cropped) picture ends up inside the player, in player coordinates.
+  // The picture is lifted off the bottom edge (not centred): a clear band of ambient shows beneath it.
+  function liftPx() { return fsOn ? 0 : Math.max(22, Math.min(50, Math.round(videoWrap.clientHeight * .09))); }
+  function layoutRegion() {
+    const W = videoWrap.clientWidth, H = videoWrap.clientHeight;
+    const lift = liftPx(), Hc = H - lift;               // Hc = height of the area the picture may use
+    fgLayer.style.bottom = lift + 'px';
+    const f = fgFrame();
+    if (!f || !W || !H) return null;
+    const c = editing ? { t: 0, r: 0, b: 0, l: 0 } : crop;
+    const active = !editing && hasCrop();
+    const x0 = Math.max(f.x + c.l * f.w, f.bx), x1 = Math.min(f.x + (1 - c.r) * f.w, f.bx + f.bw);
+    const y0 = Math.max(f.y + c.t * f.h, f.by), y1 = Math.min(f.y + (1 - c.b) * f.h, f.by + f.bh);
+    const s = active ? Math.min(W / (x1 - x0), Hc / (y1 - y0)) : 1;
+    const dw = (x1 - x0) * s, dh = (y1 - y0) * s;
+    const cx = active ? W / 2 : (x0 + x1) / 2, cy = active ? Hc - dh / 2 : (y0 + y1) / 2;   // picture sits just above the bottom edge
+    return { W, H, Hc, f, x0, x1, y0, y1, s, active, dw, dh, dx: cx - dw / 2, dy: cy - dh / 2 };
+  }
+
+  function applyCrop() {
+    const r = layoutRegion();
+    const clearMask = () => { fgLayer.style.maskImage = ''; fgLayer.style.webkitMaskImage = ''; };
+    if (!r) { fgLayer.style.transform = ''; fgLayer.style.clipPath = ''; clearMask(); geo = null; return; }
+    const { W, H, x0, x1, y0, y1, s, active } = r;
+    // Snap everything to whole pixels so the picture is never resampled onto half-pixels (that looked soft).
+    const rx = Math.round(r.dx), ry = Math.round(r.dy), rw = Math.round(r.dw), rh = Math.round(r.dh);
+    if (active) {
+      fgLayer.style.transform = `translate(${Math.round(r.dx - s * x0)}px, ${Math.round(r.dy - s * y0)}px) scale(${s})`;
+      fgLayer.style.clipPath = `inset(${y0}px ${W - x1}px ${r.Hc - y1}px ${x0}px)`;
+    } else { fgLayer.style.transform = ''; fgLayer.style.clipPath = ''; }
+
+    clearMask();
+    try { ambiSetGeometry(r); drawAmbient(); } catch (e) {}
+    try { layoutExt(r); } catch (e) {}
+  }
+
+  function cropLabel(note) {
+    const parts = [];
+    [['t', 'T'], ['b', 'B'], ['l', 'L'], ['r', 'R']].forEach(([k, n]) => {
+      if (crop[k] > .001) parts.push(`${n} ${Math.round(crop[k] * 100)}%`);
+    });
+    const base = parts.length ? parts.join(' · ') : 'Off';
+    return note ? `${base} · ${note}` : base;
+  }
+
+  function setCrop(next, note) {
+    const n = next || {};
+    ['t', 'r', 'b', 'l'].forEach(k => { crop[k] = Math.max(0, Math.min(.9, Number(n[k]) || 0)); });
+    // never let opposite sides cross
+    if (crop.t + crop.b > 1 - MIN_KEEP) { const o = crop.t + crop.b - (1 - MIN_KEEP); crop.t -= o / 2; crop.b -= o / 2; }
+    if (crop.l + crop.r > 1 - MIN_KEEP) { const o = crop.l + crop.r - (1 - MIN_KEEP); crop.l -= o / 2; crop.r -= o / 2; }
+    cropValue.textContent = cropLabel(note);
+    applyCrop();
+    updateEditor();
+  }
+
+  /* ---------- manual editor: two vertical + two horizontal lines ---------- */
+  const el = id => document.getElementById(id);
+  const lines = { t: el('lineT'), b: el('lineB'), l: el('lineL'), r: el('lineR') };
+  const shades = { t: el('shT'), b: el('shB'), l: el('shL'), r: el('shR') };
+  const cropBox = el('cropBox');
+
+  function updateEditor() {
+    if (!editing) return;
+    const f = fgFrame(); if (!f) return;
+    const W = videoWrap.clientWidth, H = videoWrap.clientHeight;
+    const x0 = f.x + crop.l * f.w, x1 = f.x + (1 - crop.r) * f.w;
+    const y0 = f.y + crop.t * f.h, y1 = f.y + (1 - crop.b) * f.h;
+    lines.t.style.top = y0 + 'px'; lines.b.style.top = y1 + 'px';
+    lines.l.style.left = x0 + 'px'; lines.r.style.left = x1 + 'px';
+    const box = (n, l, t, w, h) => { n.style.left = l + 'px'; n.style.top = t + 'px'; n.style.width = Math.max(0, w) + 'px'; n.style.height = Math.max(0, h) + 'px'; };
+    box(shades.t, 0, 0, W, y0);
+    box(shades.b, 0, y1, W, H - y1);
+    box(shades.l, 0, y0, x0, y1 - y0);
+    box(shades.r, x1, y0, W - x1, y1 - y0);
+    box(cropBox, x0, y0, x1 - x0, y1 - y0);
+  }
+
+  function enterEdit() {
+    if (!videoLoaded || !video.videoWidth) { cropValue.textContent = 'Load a video first'; return; }
+    editing = true;
+    settingsPanel.classList.add('hidden');
+    settingsToggle.setAttribute('aria-expanded', 'false');
+    cropEditor.classList.remove('hidden');
+    applyResizeMode();          // shows the FULL frame while editing so the bars are visible
+  }
+  function exitEdit() {
+    editing = false;
+    cropEditor.classList.add('hidden');
+    applyResizeMode();
+  }
+
+  let dragEdge = null;
+  Object.entries(lines).forEach(([edge, node]) => {
+    node.addEventListener('pointerdown', e => { dragEdge = edge; node.setPointerCapture(e.pointerId); e.preventDefault(); });
+    node.addEventListener('pointermove', e => { if (dragEdge === edge) moveEdge(edge, e); });
+    const end = () => { if (dragEdge === edge) dragEdge = null; };
+    node.addEventListener('pointerup', end);
+    node.addEventListener('pointercancel', end);
+  });
+  function moveEdge(edge, e) {
+    const f = fgFrame(); if (!f) return;
+    const r = videoWrap.getBoundingClientRect();
+    const px = (e.clientX - r.left - f.x) / f.w, py = (e.clientY - r.top - f.y) / f.h;
+    const next = { t: crop.t, r: crop.r, b: crop.b, l: crop.l };
+    const clamp = (v, hi) => Math.max(0, Math.min(hi, v));
+    if (edge === 't') next.t = clamp(py, 1 - crop.b - MIN_KEEP);
+    if (edge === 'b') next.b = clamp(1 - py, 1 - crop.t - MIN_KEEP);
+    if (edge === 'l') next.l = clamp(px, 1 - crop.r - MIN_KEEP);
+    if (edge === 'r') next.r = clamp(1 - px, 1 - crop.l - MIN_KEEP);
+    setCrop(next, 'manual');
+  }
+
+  /* ---------- auto-detect: any side, any bar colour ---------- */
+  const waitEvent = (target, name, ms) => new Promise((resolve, reject) => {
+    const t = setTimeout(() => { target.removeEventListener(name, on); reject(new Error('timeout')); }, ms);
+    const on = () => { clearTimeout(t); target.removeEventListener(name, on); resolve(); };
+    target.addEventListener(name, on);
+  });
+
+  function analyzeFrame(src) {
+    const vw = src.videoWidth, vh = src.videoHeight;
+    if (!vw || !vh) return null;
+    const w = 256, h = Math.max(32, Math.round(w * vh / vw));
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const c = cv.getContext('2d', { willReadFrequently: true });
+    c.drawImage(src, 0, 0, w, h);
+    const d = c.getImageData(0, 0, w, h).data;
+
+    // per-row and per-column mean colour + brightness spread
+    const mk = n => Array.from({ length: n }, () => ({ r: 0, g: 0, b: 0, l: 0, l2: 0, n: 0 }));
+    const rows = mk(h), cols = mk(w);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4, R = d[i], G = d[i + 1], B = d[i + 2];
+      const L = .2126 * R + .7152 * G + .0722 * B;
+      for (const a of [rows[y], cols[x]]) { a.r += R; a.g += G; a.b += B; a.l += L; a.l2 += L * L; a.n++; }
+    }
+    const fin = a => { a.r /= a.n; a.g /= a.n; a.b /= a.n; const m = a.l / a.n; a.sd = Math.sqrt(Math.max(0, a.l2 / a.n - m * m)); };
+    rows.forEach(fin); cols.forEach(fin);
+
+    const UNIFORM = 10, TOL = 40;
+    const dist = (p, q) => Math.hypot(p.r - q.r, p.g - q.g, p.b - q.b);
+    const count = (stats, rev) => {
+      const len = stats.length, maxN = Math.floor(len * .35);
+      const get = i => rev ? stats[len - 1 - i] : stats[i];
+      let s = 0;
+      if (get(0).sd > UNIFORM) { if (get(1) && get(1).sd <= UNIFORM) s = 1; else return 0; }
+      const ref = get(s);
+      let n = s;
+      while (n < maxN && get(n).sd <= UNIFORM && dist(get(n), ref) <= TOL) n++;
+      return n > 0 ? Math.min(maxN, n + 1) / len : 0;   // +1px safety margin so no edge fringe remains
+    };
+    const res = { t: count(rows, false), b: count(rows, true), l: count(cols, false), r: count(cols, true) };
+    if (res.t + res.b > .8 || res.l + res.r > .8) return null;   // fade-to-black / flat frame: ignore
+    return res;
+  }
+
+  async function detectBars() {
+    if (!videoLoaded || !video.videoWidth) { cropValue.textContent = 'Load a video first'; return null; }
+    cropValue.textContent = 'Scanning…';
+    const results = [];
+    if (video.readyState >= 2) { try { const r = analyzeFrame(video); if (r) results.push(r); } catch (e) {} }
+    let probe = null;
+    try {
+      probe = document.createElement('video');
+      probe.muted = true; probe.playsInline = true; probe.preload = 'auto'; probe.src = videoURL;
+      await waitEvent(probe, 'loadeddata', 5000);
+      const dur = probe.duration;
+      if (Number.isFinite(dur) && dur > 1) {
+        for (const p of [.1, .3, .5, .7, .9]) {
+          try {
+            probe.currentTime = dur * p;
+            await waitEvent(probe, 'seeked', 2500);
+            const r = analyzeFrame(probe); if (r) results.push(r);
+          } catch (e) {}
+        }
+      }
+    } catch (e) {}
+    finally { if (probe) { probe.removeAttribute('src'); probe.load(); } }
+    if (!results.length) { cropValue.textContent = cropLabel('auto-detect unavailable'); return null; }
+    // A bar must be present in EVERY sampled frame, so dark scenes are not mistaken for bars.
+    const out = { t: 1, b: 1, l: 1, r: 1 };
+    results.forEach(r => ['t', 'b', 'l', 'r'].forEach(k => { out[k] = Math.min(out[k], r[k]); }));
+    return out;
+  }
+  async function runAutoDetect() {
+    const r = await detectBars();
+    if (!r) return;
+    const found = ['t', 'b', 'l', 'r'].some(k => r[k] >= .008);
+    if (!found) { setCrop({}, 'no bars found'); return; }
+    setCrop(r, 'auto');
+  }
+
+  /* ---------- fullscreen ---------- */
+  const fsToggle = document.getElementById('fsToggle');
+  const fsIcon = document.getElementById('fsIcon');
+  const ICON_ENTER = 'M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4';
+  const ICON_EXIT = 'M9 4v4a1 1 0 0 1-1 1H4M20 9h-4a1 1 0 0 1-1-1V4M15 20v-4a1 1 0 0 1 1-1h4M4 15h4a1 1 0 0 1 1 1v4';
+  function setFullscreen(on) {
+    fsOn = on;
+    stage.classList.toggle('fs', on);
+    fsIcon.firstElementChild.setAttribute('d', on ? ICON_EXIT : ICON_ENTER);
+    fsToggle.setAttribute('aria-label', on ? 'Exit fullscreen' : 'Fullscreen');
+    // Also ask the browser/webview for true fullscreen where supported (the layout works without it).
+    const root = document.documentElement;
+    try {
+      if (on && !document.fullscreenElement && !document.webkitFullscreenElement) {
+        const req = root.requestFullscreen || root.webkitRequestFullscreen;
+        if (req) { const r = req.call(root); if (r && r.catch) r.catch(() => {}); }
+      } else if (!on && (document.fullscreenElement || document.webkitFullscreenElement)) {
+        const ex = document.exitFullscreen || document.webkitExitFullscreen;
+        if (ex) { const r = ex.call(document); if (r && r.catch) r.catch(() => {}); }
+      }
+    } catch (e) {}
+    applyResizeMode();
+    tick();
+  }
+  fsToggle.addEventListener('click', () => setFullscreen(!fsOn));
+  const onFsChange = () => { if (fsOn && !document.fullscreenElement && !document.webkitFullscreenElement) setFullscreen(false); };
+  document.addEventListener('fullscreenchange', onFsChange);
+  document.addEventListener('webkitfullscreenchange', onFsChange);
+
+  cropEdit.addEventListener('click', enterEdit);
+  autoCropButton.addEventListener('click', runAutoDetect);
+  resetCropButton.addEventListener('click', () => setCrop({}, ''));
+  el('edDone').addEventListener('click', exitEdit);
+  el('edReset').addEventListener('click', () => setCrop({}, ''));
+  el('edAuto').addEventListener('click', runAutoDetect);
+  video.addEventListener('loadeddata', () => {
+    if (autoCropTimer) clearTimeout(autoCropTimer);
+    autoCropTimer = setTimeout(runAutoDetect, 250);
+  });
+  video.addEventListener('loadedmetadata', () => { applyCrop(); updateEditor(); });
+  window.addEventListener('resize', () => { applyCrop(); updateEditor(); });
+  if (window.ResizeObserver) new ResizeObserver(() => { applyCrop(); updateEditor(); }).observe(videoWrap);
+
+  settingsToggle.addEventListener('click', () => {
+    const open = settingsPanel.classList.contains('hidden');
+    settingsPanel.classList.toggle('hidden', !open);
+    settingsToggle.setAttribute('aria-expanded', String(open));
+  });
+  resizeNext.addEventListener('click', () => {
+    resizeIndex = (resizeIndex + 1) % resizeModes.length;
+    applyResizeMode();
+  });
+  speedSelect.addEventListener('change', () => {
+    video.playbackRate = Number(speedSelect.value);
+  });
+  document.addEventListener('click', (event) => {
+    if (!settingsPanel.contains(event.target) && !settingsToggle.contains(event.target)) {
+      settingsPanel.classList.add('hidden');
+      settingsToggle.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  const fmt = t => {
+    if (!Number.isFinite(t)) return '0:00';
+    t = Math.max(0, Math.floor(t));
+    return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0');
+  };
+  function syncReadyState() {
+    const ready = videoLoaded && srtLoaded;
+    prompt.classList.toggle('hidden', ready);
+    hint.textContent = ready ? ' ' : (!videoLoaded && !srtLoaded ? 'Load both files to begin.' : 'Now import the other file.');
+    if (ready) hint.classList.add('hidden'); else hint.classList.remove('hidden');
+    updateSubtitle();
+  }
+  videoFile.addEventListener('change', () => {
+    const file = videoFile.files && videoFile.files[0];
+    if (!file) return;
+    if (videoURL) URL.revokeObjectURL(videoURL);
+    videoURL = URL.createObjectURL(file);
+    if (editing) exitEdit();
+    setCrop({}, '');
+    if (videoLoaded) clearExt();
+    video.src = videoURL;
+    video.load();
+    videoLoaded = true;
+    ambiReset();
+    syncReadyState();
+  });
+  srtFile.addEventListener('change', async () => {
+    const file = srtFile.files && srtFile.files[0];
+    if (!file) return;
+    try {
+      const raw = await file.text();
+      cues = parseSRT(raw);
+      srtLoaded = true;
+      syncReadyState();
+    } catch (e) {
+      alert('Could not read that SRT file. Please choose a valid .srt file.');
+    }
+  });
+  function parseSRT(raw) {
+    const clean = raw.replace(/^\uFEFF/, '').replace(/\r/g, '').trim();
+    if (!clean) return [];
+    return clean.split(/\n\s*\n/).map(block => {
+      const lines = block.split('\n');
+      const ti = lines.findIndex(line => line.includes('-->'));
+      if (ti < 0) return null;
+      const parts = lines[ti].split('-->');
+      const parseTime = s => {
+        const m = s.trim().replace(',', '.').match(/(?:(\d+):)?(\d{1,2}):(\d{1,2})(?:\.(\d{1,3}))?/);
+        if (!m) return NaN;
+        return Number(m[1] || 0) * 3600 + Number(m[2]) * 60 + Number(m[3]) + Number(('0.' + (m[4] || '0')));
+      };
+      const start = parseTime(parts[0]), end = parseTime(parts[1]);
+      const text = lines.slice(ti + 1).join('\n').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+      return Number.isFinite(start) && Number.isFinite(end) ? { start, end, text } : null;
+    }).filter(Boolean).sort((a,b) => a.start - b.start);
+  }
+  const ARABIC = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+  // Arabic-script lines -> big main line; other-language lines -> smaller translation underneath.
+  function splitCue(text) {
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    if (!lines.length) return ['', ''];
+    const ar = lines.filter(l => ARABIC.test(l)), other = lines.filter(l => !ARABIC.test(l));
+    if (ar.length && other.length) return [ar.join(' '), other.join(' ')];
+    return [lines[0], lines.slice(1).join(' ')];
+  }
+  const subMain = document.getElementById('subMain');
+  const subTrans = document.getElementById('description');
+  let lastCue = null;
+  function updateSubtitle() {
+    const t = video.currentTime || 0;
+    let lo = 0, hi = cues.length - 1, found = '';
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1, c = cues[mid];
+      if (t < c.start) hi = mid - 1;
+      else if (t > c.end) lo = mid + 1;
+      else { found = c.text; break; }
+    }
+    if (found === lastCue) return;
+    lastCue = found;
+    subtitleEl.textContent = found;
+    const [main, trans] = splitCue(found);
+    subMain.textContent = main; subTrans.textContent = trans;
+    subMain.style.opacity = main ? '1' : '0';
+    subTrans.style.opacity = trans ? '1' : '0';
+  }
+  function setPlayIcon(playing) {
+    playPause.innerHTML = '<svg viewBox="0 0 24 28" aria-hidden="true"><path d="M3 2.5Q3 0 5.3 1.4L22 12.2Q24 13.5 22 14.8L5.3 26.6Q3 28 3 25.5Z" fill="currentColor"/></svg>';
+    playPause.setAttribute('aria-label', playing ? 'Pause video' : 'Play video');
+    bigPlay.classList.toggle('visible', !playing && videoLoaded && srtLoaded);
+  }
+  async function togglePlay() {
+    if (!(videoLoaded && srtLoaded)) return;
+    if (video.paused) { try { await video.play(); } catch(e) {} }
+    else video.pause();
+  }
+  playPause.addEventListener('click', togglePlay);
+  bigPlay.addEventListener('click', togglePlay);
+  video.addEventListener('play', () => {
+    setPlayIcon(true);
+  });
+  video.addEventListener('pause', () => {
+    setPlayIcon(false);
+  });
+  video.addEventListener('ended', () => {
+    setPlayIcon(false);
+  });
+  document.getElementById('backward').addEventListener('click', () => { video.currentTime = Math.max(0, video.currentTime - 10); });
+  document.getElementById('forward').addEventListener('click', () => { if (Number.isFinite(video.duration)) video.currentTime = Math.min(video.duration, video.currentTime + 10); });
+  seek.addEventListener('input', () => { if (Number.isFinite(video.duration) && video.duration > 0) video.currentTime = (Number(seek.value) / 1000) * video.duration; });
+  video.addEventListener('loadedmetadata', () => { duration.textContent = fmt(video.duration); });
+  video.addEventListener('timeupdate', () => {
+    currentTime.textContent = fmt(video.currentTime);
+    if (Number.isFinite(video.duration) && video.duration > 0 && !seek.matches(':active')) seek.value = String(Math.round(video.currentTime / video.duration * 1000));
+    updateSubtitle();
+    const now = performance.now();
+  });
+  /* ====================== AMBILIGHT ENGINE ======================
+     Ported from WesselKroos/youtube-ambilight (MIT licence, see the notice at the top of this file),
+     2D-canvas renderer. How it works:
+       1. A STACK of copies of the picture. Each copy is scaled a little bigger than the one above it ("Edge size"),
+          so together they form rings of colour that continue past the picture's edges.
+       2. The whole stack is blurred with CSS ("Blur") and colour-adjusted (brightness / contrast / saturation).
+       3. A black SHADOW gradient sits on top and fades the glow out with distance ("Spread", "fade start", "fade curve").
+       4. Optional FRAME BLENDING cross-fades between video frames, and FLICKER REDUCTION limits how fast the brightness
+          of the glow may change. The real <video> sits above all of this, untouched.
+     Black-bar removal / crop is handled by the player's own crop engine above: the glow is built from the CROPPED picture. */
+  const AMBI_KEY = 'ambilightSettings.v1';
+  const AMBI_DEFAULTS = {
+    bg: 1, stReach: 35, stCurve: 80, extAlign: 0, extZoom: 100, extX: 0, extY: 0, fit: 1,
+    blur: 30, edge: 12, spread: 60, fadeStart: 15, fadeCurve: 35,
+    brightness: 100, contrast: 100, saturation: 115, debanding: 0,
+    flicker: 0, blending: 1, blendSmooth: 80,
+    top: 1, right: 1, bottom: 1, left: 1
+  };
+  const amb = Object.assign({}, AMBI_DEFAULTS);
+  try { Object.assign(amb, JSON.parse(localStorage.getItem(AMBI_KEY) || '{}')); } catch (e) {}
+  try { localStorage.removeItem('ambSettings'); } catch (e) {}                      // settings of the old ambient
+  const saveAmb = () => { try { localStorage.setItem(AMBI_KEY, JSON.stringify(amb)); } catch (e) {} };
+
+  const INNER = 2;          // how many scaled-down layers sit inside the picture (they smooth the join with the picture's edge)
+  const MAXPOS = 10;        // most rings outside the picture in "Fit player" mode (keeps it light on phones)
+  const ambi = document.getElementById('ambi');
+  const ambiFilter = document.getElementById('ambiFilter');
+  const ambiProj = document.getElementById('ambiProj');
+  const ambiNoise = document.getElementById('ambiNoise');
+  const mkCv = (w = 1, h = 1) => Object.assign(document.createElement('canvas'), { width: w, height: h });
+  const clampv = (x, a, b) => Math.max(a, Math.min(b, x));
+
+  /* ---- shadow: the fade-out gradient (same maths as the extension's ProjectorShadow) ---- */
+  const SH = 512;
+  const shadowCv = Object.assign(mkCv(SH, SH), { className: 'ambi-shadow' });
+  const sctx = shadowCv.getContext('2d');
+  ambiProj.appendChild(shadowCv);
+  let shadowKey = '';
+  function shadowGradient(size, edge, keyframes, fadeOutFrom, horizontal) {
+    const pts = [0,
+      ...keyframes.map(e => Math.max(0, edge - edge * e.p - edge * fadeOutFrom * (1 - e.p))),
+      edge - edge * fadeOutFrom,
+      edge + size + edge * fadeOutFrom,
+      ...keyframes.slice().reverse().map(e => Math.min(edge + size + edge, edge + size + edge * e.p + edge * fadeOutFrom * (1 - e.p))),
+      edge + size + edge];
+    const max = pts[pts.length - 1] || 1, K = keyframes.length, stops = [];
+    stops.push([Math.min(1, pts[0] / max), 1]);
+    const kr = keyframes.slice().reverse();                                   // (the extension reverses the array in place here, so the first half reads it reversed)
+    for (let i = 0; i < K; i++) stops.push([Math.min(1, pts[K - i] / max), kr[i].o]);
+    stops.push([Math.min(1, pts[1 + K] / max), 0]);
+    stops.push([Math.min(1, pts[2 + K] / max), 0]);
+    for (let i = 0; i < K; i++) stops.push([Math.min(1, pts[2 + K * 2 - i] / max), keyframes[i].o]);
+    stops.push([Math.min(1, pts[3 + K * 2] / max), 1]);
+    const g = sctx.createLinearGradient(0, 0, horizontal ? SH : 0, horizontal ? 0 : SH);
+    for (const [o, a] of stops) g.addColorStop(Math.round(o * 10000) / 10000, `rgba(0,0,0,${Math.round(a * 10000) / 10000})`);
+    sctx.fillStyle = g; sctx.fillRect(0, 0, SH, SH);
+  }
+  function shadowRescale(scale, ps) {
+    shadowCv.style.transform = `scale(${scale.x + .01}, ${scale.y + .01})`;
+    const key = JSON.stringify([scale, ps, amb.fadeCurve, amb.fadeStart, amb.top, amb.right, amb.bottom, amb.left]);
+    if (key === shadowKey) return;
+    shadowKey = key;
+    sctx.clearRect(0, 0, SH, SH);
+    const edge = { w: (ps.w * scale.x - ps.w) / 2 / scale.x, h: (ps.h * scale.y - ps.h) / 2 / scale.y };
+    const vid = { w: ps.w / scale.x, h: ps.h / scale.y };
+    const easing = 16 / (amb.fadeCurve * .64), kf = [];
+    for (let i = 1; i < 256; i++) kf.push({ p: Math.round(i / 256 * 10000) / 10000, o: Math.round(Math.pow(i / 256, easing) * 10000) / 10000 });
+    let from = amb.fadeStart / 100;
+    from = Math.max(from, -(vid.h / 2 / edge.h), -(vid.w / 2 / edge.w));
+    if (!Number.isFinite(from)) from = amb.fadeStart / 100;
+    if (edge.w < .01 && edge.h < .01) return;                               // nothing outside the picture: no shadow needed
+    try { shadowGradient(vid.h, edge.h, kf, from, false); shadowGradient(vid.w, edge.w, kf, from, true); } catch (e) { sctx.clearRect(0, 0, SH, SH); return; }
+    // switched-off directions: paint the matching quarter of the glow black
+    const sw = SH / (vid.w + edge.w * 2), sh = SH / (vid.h + edge.h * 2), W = SH, H = SH;
+    const cx = sw * (edge.w + vid.w / 2), cy = sh * (edge.h + vid.h / 2), L = sw * edge.w, R = sw * (edge.w + vid.w), T = sh * edge.h, B = sh * (edge.h + vid.h);
+    sctx.fillStyle = '#000';
+    const poly = pts => { sctx.beginPath(); pts.forEach(([x, y], i) => i ? sctx.lineTo(x, y) : sctx.moveTo(x, y)); sctx.closePath(); sctx.fill(); };
+    if (!amb.top) poly([[0, 0], [L, T], [cx, cy], [R, T], [W, 0]]);
+    if (!amb.right) poly([[W, 0], [R, T], [cx, cy], [R, B], [W, H]]);
+    if (!amb.bottom) poly([[0, H], [L, B], [cx, cy], [R, B], [W, H]]);
+    if (!amb.left) poly([[0, 0], [L, T], [cx, cy], [L, B], [0, H]]);
+  }
+
+  /* ---- geometry: where the (cropped) picture is, and what part of the video it shows ---- */
+  const pr = { list: [], w: 0, h: 0 };
+  let geo = null, ambiDirty = true, cleared = true, snap = true;
+  function ambiSetGeometry(r) {
+    const vw = video.videoWidth, vh = video.videoHeight, f = r.f;
+    const g = { r, sx: (r.x0 - f.x) / f.w * vw, sy: (r.y0 - f.y) / f.h * vh, sw: (r.x1 - r.x0) / f.w * vw, sh: (r.y1 - r.y0) / f.h * vh };
+    geo = (g.sw >= 2 && g.sh >= 2) ? g : null;
+    ambiDirty = true;
+  }
+
+  const buf = mkCv(), bctx = buf.getContext('2d');             // newest frame
+  const prevBuf = mkCv(), prevCtx = prevBuf.getContext('2d');  // frame before it (frame blending)
+  const blendBuf = mkCv(), blendCtx = blendBuf.getContext('2d');
+  const proc = mkCv(), pcx = proc.getContext('2d', { willReadFrequently: true });   // small canvas for flicker reduction
+  bctx.imageSmoothingQuality = 'high';
+  let fPrev = null;
+
+  function ambiLayout() {
+    const g = geo; if (!g) return false;
+    const r = g.r, W = r.W, H = r.H;
+    const dx = Math.round(r.dx), dy = Math.round(r.dy), dw = Math.round(r.dw), dh = Math.round(r.dh);
+    if (dw < 4 || dh < 4) return false;
+    Object.assign(ambiProj.style, { left: dx + 'px', top: dy + 'px', width: dw + 'px', height: dh + 'px' });
+
+    // size of the small canvases the picture is drawn into (the blur hides the lower resolution)
+    const pMin = Math.max(257, Math.min(384, g.sw, g.sh)), ps = Math.max(pMin / g.sw, pMin / g.sh);
+    const w = Math.ceil(g.sw * ps), h = Math.ceil(g.sh * ps);
+    if (pr.w !== w || pr.h !== h) { pr.w = w; pr.h = h; }
+    for (const c of [buf, prevBuf, blendBuf]) { if (c.width !== w) c.width = w; if (c.height !== h) c.height = h; }
+    bctx.imageSmoothingQuality = 'high';
+    const pf = 192 / Math.max(w, h), fw = Math.max(16, Math.round(w * pf)), fh = Math.max(16, Math.round(h * pf));
+    if (proc.width !== fw) proc.width = fw; if (proc.height !== fh) proc.height = fh;
+
+    // rings: every ring is `step` bigger than the one inside it
+    const ratio = w > h ? { x: 1, y: w / h } : { x: h / w, y: 1 };
+    let step = amb.edge / 100, posMax;
+    if (amb.fit) {
+      const gx = Math.max(dx, W - dx - dw), gy = Math.max(dy, H - dy - dh);          // free space around the picture, in px
+      const needX = 2 * gx / dw / ratio.x, needY = 2 * gy / dh / ratio.y;            // step*rings needed to reach the player's edge
+      const need = Math.max(needX, needY);
+      posMax = clampv(Math.ceil(need / step - 1e-6), 1, MAXPOS);
+      if (need > 0) step = need / posMax;
+    } else posMax = Math.max(0, Math.round(amb.spread / amb.edge));
+    const levels = Math.max(2, posMax + INNER + 1);
+
+    while (pr.list.length > levels) pr.list.pop().c.remove();
+    while (pr.list.length < levels) {
+      const c = mkCv(w, h); c.className = 'ambi-level';
+      ambiProj.insertBefore(c, ambiProj.firstChild);                                // later = lower in the stack = bigger
+      pr.list.push({ c, x: c.getContext('2d') });
+    }
+    let last = { x: 1, y: 1 };
+    pr.list.forEach((p, i) => {
+      if (p.c.width !== w) p.c.width = w; if (p.c.height !== h) p.c.height = h;
+      const pos = i - INNER; let sx = 1, sy = 1;
+      if (pos > 0) { sx = 1 + step * ratio.x * pos; sy = 1 + step * ratio.y * pos; }
+      if (pos < 0) { sx = Math.max(0, 1 - step * ratio.x * -pos); sy = Math.max(0, 1 - step * ratio.y * -pos); }
+      last = { x: sx, y: sy };
+      p.c.style.transform = `scale(${Math.max(1 / w, sx)}, ${Math.max(1 / h, sy)})`;
+    });
+    shadowRescale(last, { w, h });
+
+    const blurPx = amb.blur ? Math.max(4, Math.round(dh * .0025 * amb.blur)) : 0;   // any blur at all is at least 4px: hides video grain
+    ambiFilter.style.filter = [
+      blurPx ? `blur(${blurPx}px)` : '',
+      amb.contrast !== 100 ? `contrast(${amb.contrast}%)` : '',
+      amb.brightness !== 100 ? `brightness(${amb.brightness}%)` : '',
+      amb.saturation !== 100 ? `saturate(${amb.saturation}%)` : ''
+    ].filter(Boolean).join(' ');
+    ambiNoise.style.opacity = amb.debanding ? String(clampv(amb.debanding / 100, 0, 1)) : '0';
+    ambi.style.display = bgMode() === 1 ? '' : 'none';
+    return true;
+  }
+
+  /* dither tile for "Debanding": mid-grey noise, blended with "overlay" so pure black stays black */
+  (() => {
+    try {
+      const n = mkCv(128, 128), x = n.getContext('2d'), id = x.createImageData(128, 128);
+      for (let i = 0; i < id.data.length; i += 4) { const v = 96 + Math.random() * 64; id.data[i] = id.data[i + 1] = id.data[i + 2] = v; id.data[i + 3] = 255; }
+      x.putImageData(id, 0, 0);
+      ambiNoise.style.backgroundImage = `url(${n.toDataURL('image/png')})`;
+    } catch (e) {}
+  })();
+
+  /* ---- frame-rate estimates (needed to know when frame blending makes sense) ---- */
+  let vDur = 33.3, dDur = 16.7, lastMT = -1, lastPF = -1, blendT0 = 0, lastAlpha = 1, newVideoFrame = false;
+  const hasVFC = 'requestVideoFrameCallback' in HTMLVideoElement.prototype;
+
+  /* Shrinks the video in steps of at most 2x. One big jump (e.g. 1080p -> 360p) only samples some pixels, which makes the
+     glow shimmer / look grainy; halving step by step averages every pixel instead. */
+  const stepCv = [mkCv(), mkCv()], stepCx = stepCv.map(c => c.getContext('2d'));
+  stepCx.forEach(x => { x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; });
+  function downscale(src, sx, sy, sw, sh, dstCtx, dw, dh) {
+    let cw = sw, ch = sh, from = src, fx = sx, fy = sy, i = 0;
+    while (cw / 2 > dw * 1.01 && ch / 2 > dh * 1.01 && i < 8) {
+      const tw = Math.max(dw, Math.round(cw / 2)), th = Math.max(dh, Math.round(ch / 2)), k = i & 1;
+      if (stepCv[k].width !== tw) stepCv[k].width = tw; if (stepCv[k].height !== th) stepCv[k].height = th;
+      stepCx[k].drawImage(from, fx, fy, cw, ch, 0, 0, tw, th);
+      from = stepCv[k]; fx = 0; fy = 0; cw = tw; ch = th; i++;
+    }
+    dstCtx.imageSmoothingQuality = 'high';
+    dstCtx.drawImage(from, fx, fy, cw, ch, 0, 0, dw, dh);
+  }
+
+  function captureFrame(fresh) {
+    const g = geo;
+    try {
+      if (amb.flicker > 0) {
+        downscale(video, g.sx, g.sy, g.sw, g.sh, pcx, proc.width, proc.height);
+        const id = pcx.getImageData(0, 0, proc.width, proc.height), d = id.data;
+        if (!fPrev || fPrev.length !== d.length) { fPrev = new Uint8ClampedArray(d.length); fresh = true; }
+        if (!fresh) {
+          // limit how fast each pixel's brightness may change: big jumps in brightness are followed more slowly
+          const fd = (118 - amb.flicker) / 118, fp = fPrev;
+          for (let i = 0; i < d.length; i += 4) {
+            const r = d[i], gg = d[i + 1], b = d[i + 2], pr0 = fp[i], pg = fp[i + 1], pb = fp[i + 2];
+            const dl = Math.abs((r * .213 + gg * .715 + b * .072) - (pr0 * .213 + pg * .715 + pb * .072)) / 255;
+            const k = Math.max(fd * .1, (1 - dl * dl * dl) * fd);
+            d[i] = pr0 + (r - pr0) * k; d[i + 1] = pg + (gg - pg) * k; d[i + 2] = pb + (b - pb) * k;
+          }
+        }
+        fPrev.set(d);
+        pcx.putImageData(id, 0, 0);
+        bctx.drawImage(proc, 0, 0, buf.width, buf.height);
+      } else {
+        fPrev = null;
+        downscale(video, g.sx, g.sy, g.sw, g.sh, bctx, buf.width, buf.height);
+      }
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function ambiDraw(newFrame) {
+    if (bgMode() === 3) { stretchDraw(); return; }
+    if (bgMode() !== 1 || !geo || video.readyState < 2 || !video.videoWidth) return;
+    if (ambiDirty) { ambiDirty = false; if (!ambiLayout()) return; cleared = true; }
+    const now = performance.now(), blending = !!amb.blending && amb.blendSmooth > 0;
+    const fresh = cleared || snap;
+    let drew = false;
+    if (newFrame || fresh) {
+      if (blending && !fresh) prevCtx.drawImage(buf, 0, 0);                         // the frame we are fading away from
+      if (!captureFrame(fresh)) return;
+      if (blending && fresh) prevCtx.drawImage(buf, 0, 0);
+      blendT0 = now - dDur / 2; drew = true;
+    }
+    let alpha = 1;
+    if (blending && !fresh && 1000 / dDur >= 1000 / vDur * 1.33) {                  // only useful when the screen is faster than the video
+      alpha = clampv((now - blendT0) / (vDur * Math.max(.05, amb.blendSmooth / 100)), 0, 1);
+    }
+    if (drew || fresh || alpha !== lastAlpha) {
+      let src = buf;
+      if (blending && alpha < 1) {
+        blendCtx.globalAlpha = 1; blendCtx.drawImage(prevBuf, 0, 0);
+        blendCtx.globalAlpha = alpha; blendCtx.drawImage(buf, 0, 0);
+        blendCtx.globalAlpha = 1; src = blendBuf;
+      }
+      for (const p of pr.list) p.x.drawImage(src, 0, 0);
+      lastAlpha = alpha;
+    }
+    cleared = false; snap = false;
+  }
+
+  /* ---- the draw loop ---- */
+  let loopOn = false, vfcId = 0, rafId = 0, rafT = 0;
+  const wantRaf = () => !hasVFC || (!!amb.blending && amb.blendSmooth > 0);
+  function onVfc(now, meta) {
+    if (!loopOn) return;
+    if (lastMT >= 0 && meta.mediaTime > lastMT && meta.presentedFrames > lastPF) {
+      const d = (meta.mediaTime - lastMT) * 1000 / (video.playbackRate || 1) / (meta.presentedFrames - lastPF);
+      if (d > 8 && d < 100) vDur = vDur * .9 + d * .1;
+    }
+    lastMT = meta.mediaTime; lastPF = meta.presentedFrames;
+    newVideoFrame = true;
+    updateSubtitle();
+    if (!wantRaf()) { ambiDraw(true); newVideoFrame = false; }
+    vfcId = video.requestVideoFrameCallback(onVfc);
+  }
+  let lastCT = -1;
+  function onRaf(t) {
+    if (!loopOn) return;
+    if (rafT) { const d = t - rafT; if (d > 4 && d < 50) dDur = dDur * .9 + d * .1; }
+    rafT = t;
+    if (wantRaf()) {
+      let nf = newVideoFrame;
+      if (!hasVFC) { nf = video.currentTime !== lastCT; lastCT = video.currentTime; updateSubtitle(); }
+      ambiDraw(nf); newVideoFrame = false;
+    }
+    rafId = requestAnimationFrame(onRaf);
+  }
+  function startLoop() {
+    if (loopOn) return;
+    loopOn = true; lastMT = -1; lastPF = -1; rafT = 0;
+    if (hasVFC) vfcId = video.requestVideoFrameCallback(onVfc);
+    rafId = requestAnimationFrame(onRaf);
+  }
+  function stopLoop() {
+    loopOn = false;
+    try { if (hasVFC) video.cancelVideoFrameCallback(vfcId); } catch (e) {}
+    cancelAnimationFrame(rafId);
+    tick();
+  }
+  function tick() { updateSubtitle(); ambiDraw(video.paused); }
+  function drawAmbient() { ambiDraw(false); }
+  function ambiReset() { geo = null; fPrev = null; cleared = true; snap = true; ambiDirty = true; lastAlpha = 1; }
+  video.addEventListener('play', startLoop);
+  video.addEventListener('pause', stopLoop);
+  video.addEventListener('ended', stopLoop);
+  video.addEventListener('seeking', () => { snap = true; });
+  ['seeked', 'loadeddata', 'loadedmetadata'].forEach(ev => video.addEventListener(ev, tick));
+  window.addEventListener('resize', tick);
+  if (window.ResizeObserver) new ResizeObserver(tick).observe(videoWrap);
+
+  /* ====================== EXTENDED-VIDEO BACKGROUND ======================
+     Optional second file: a version of the same clip that an outpainting tool (Follow-Your-Canvas, MOTIA, LTX outpaint ...)
+     has extended past the original edges. It plays muted behind the real video, locked to the same time. The real
+     picture stays on top, so the middle is always the untouched original. */
+  const extVideo = document.getElementById('extVideo');
+  const extFile = document.getElementById('extFile');
+  const extValue = document.getElementById('extValue');
+  let extURL = null, extLoaded = false;
+  function bgMode() { return (amb.bg === 2 && !extLoaded) ? 1 : amb.bg; }   // 0 off, 1 ambilight, 2 extended
+
+  // Place the extended frame so its copy of the original lines up exactly under the real picture.
+  function layoutExt(r) {
+    if (!extLoaded || !r || !extVideo.videoWidth || !video.videoWidth) return;
+    const f = r.f, s = r.active ? r.s : 1;
+    const fx = r.active ? r.dx + (f.x - r.x0) * s : f.x;       // full original frame on screen
+    const fy = r.active ? r.dy + (f.y - r.y0) * s : f.y;
+    const fw = f.w * s, fh = f.h * s;
+    const Ow = video.videoWidth, Oh = video.videoHeight, Ew = extVideo.videoWidth, Eh = extVideo.videoHeight;
+    const k = amb.extAlign === 1 ? 1 : Math.min(Ew / Ow, Eh / Oh);   // extended pixels per original pixel
+    const q = fw / (Ow * k) * (amb.extZoom / 100);                   // screen pixels per extended pixel
+    const w = Ew * q, h = Eh * q;
+    const cx = fx + fw / 2 + amb.extX / 100 * fw, cy = fy + fh / 2 + amb.extY / 100 * fh;
+    Object.assign(extVideo.style, { left: (cx - w / 2) + 'px', top: (cy - h / 2) + 'px', width: w + 'px', height: h + 'px' });
+  }
+  function refreshExt() { try { layoutExt(layoutRegion()); } catch (e) {} }
+
+  // Keep it in step with the main video: hard seek on big drift, tiny speed nudges on small drift.
+  function syncExt(hard) {
+    if (!extLoaded) return;
+    if (bgMode() !== 2) { if (!extVideo.paused) extVideo.pause(); return; }
+    const base = video.playbackRate || 1;
+    const d = extVideo.currentTime - video.currentTime;
+    if (hard || Math.abs(d) > .25) { try { extVideo.currentTime = video.currentTime; } catch (e) {} extVideo.playbackRate = base; }
+    else if (Math.abs(d) > .04) extVideo.playbackRate = base * (1 - Math.max(-.05, Math.min(.05, d * .5)));
+    else extVideo.playbackRate = base;
+    if (video.paused) { if (!extVideo.paused) extVideo.pause(); }
+    else if (extVideo.paused) { const p = extVideo.play(); if (p && p.catch) p.catch(() => {}); }
+  }
+  function applyBg() {
+    const m = bgMode();
+    ambi.style.display = m === 1 ? '' : 'none';
+    stCv.style.display = m === 3 ? 'block' : 'none';
+    extVideo.style.display = m === 2 ? 'block' : 'none';
+    if (m === 1) ambiDirty = true;
+    if (m === 3) { stSize = ''; tick(); }
+    if (m === 2) refreshExt();
+    syncExt(true);
+  }
+  function clearExt() {
+    if (extURL) URL.revokeObjectURL(extURL);
+    extURL = null; extLoaded = false;
+    extVideo.pause(); extVideo.removeAttribute('src'); extVideo.load();
+    extValue.textContent = 'None';
+    if (amb.bg === 2) { amb.bg = 1; saveAmb(); }
+    try { ambiSync.forEach(f => f()); } catch (e) {}
+    applyBg();
+  }
+  extFile.addEventListener('change', () => {
+    const file = extFile.files && extFile.files[0];
+    if (!file) return;
+    if (extURL) URL.revokeObjectURL(extURL);
+    extURL = URL.createObjectURL(file);
+    extVideo.src = extURL; extVideo.load();
+    extLoaded = true; extValue.textContent = file.name;
+    amb.bg = 2; saveAmb();
+    try { ambiSync.forEach(f => f()); } catch (e) {}
+    applyBg();
+    extFile.value = '';
+  });
+  document.getElementById('extImport').addEventListener('click', () => extFile.click());
+  document.getElementById('extRemove').addEventListener('click', clearExt);
+  extVideo.addEventListener('loadedmetadata', () => { refreshExt(); applyBg(); });
+  extVideo.addEventListener('loadeddata', () => syncExt(true));
+  ['play', 'pause', 'seeking', 'seeked', 'ratechange', 'loadeddata'].forEach(ev =>
+    video.addEventListener(ev, () => syncExt(ev === 'seeked' || ev === 'seeking' || ev === 'pause')));
+  setInterval(() => syncExt(false), 200);
+
+  /* ====================== STRETCH FILL (live, no AI) ======================
+     Idea from Niek/superview (GoPro "SuperView"): a non-linear stretch that grows toward the edges. Here it runs live
+     on the GPU. Inside the picture's rectangle nothing changes; outside it, the picture is mirrored back out of its own
+     edge and stretched more and more the further it goes ("Stretch reach" = how much of the picture is used,
+     "Stretch curve" = how fast the stretch grows), then softly blurred. The real picture stays on top, untouched. */
+  const stCv = document.getElementById('stretchCv');
+  let stGl = null, stU = {}, stTex = null, stFail = false, stSize = '';
+  const ST_VS = 'attribute vec2 a;varying vec2 vP;void main(){vP=vec2(a.x*.5+.5,.5-a.y*.5);gl_Position=vec4(a,0.,1.);}';
+  const ST_FS = 'precision mediump float;varying vec2 vP;uniform sampler2D T;uniform vec2 uSz;uniform vec4 uR;uniform vec4 uS;uniform vec2 uK;' +
+    'float m(float X,float a,float b,float L){float s=uK.x,p=uK.y;' +
+    'if(X<a){float d=clamp((a-X)/max(a,1.),0.,1.);return s*pow(d,p);}' +
+    'if(X>b){float d=clamp((X-b)/max(L-b,1.),0.,1.);return 1.-s*pow(d,p);}' +
+    'return (X-a)/max(b-a,1.);}' +
+    'void main(){float u=m(vP.x*uSz.x,uR.x,uR.x+uR.z,uSz.x);float v=m(vP.y*uSz.y,uR.y,uR.y+uR.w,uSz.y);' +
+    'gl_FragColor=vec4(texture2D(T,uS.xy+vec2(u,v)*uS.zw).rgb,1.);}';
+  function stInit() {
+    try {
+      const gl = stCv.getContext('webgl', { antialias: false, premultipliedAlpha: false });
+      if (!gl) throw 0;
+      const sh = (t, s) => { const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o)); return o; };
+      const pg = gl.createProgram();
+      gl.attachShader(pg, sh(gl.VERTEX_SHADER, ST_VS)); gl.attachShader(pg, sh(gl.FRAGMENT_SHADER, ST_FS));
+      gl.linkProgram(pg); if (!gl.getProgramParameter(pg, gl.LINK_STATUS)) throw 0;
+      gl.useProgram(pg);
+      const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+      const loc = gl.getAttribLocation(pg, 'a'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+      stTex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, stTex);
+      [[gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE], [gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR]]
+        .forEach(([k, v]) => gl.texParameteri(gl.TEXTURE_2D, k, v));
+      ['T', 'uSz', 'uR', 'uS', 'uK'].forEach(n => { stU[n] = gl.getUniformLocation(pg, n); });
+      gl.uniform1i(stU.T, 0);
+      stGl = gl;
+    } catch (e) { stFail = true; amb.bg = 1; saveAmb(); try { ambiSync.forEach(f => f()); } catch (x) {} applyBg(); }
+  }
+  function stretchDraw() {
+    if (stFail || !geo || video.readyState < 2 || !video.videoWidth) return;
+    if (!stGl) { stInit(); if (!stGl) return; }
+    const g = geo, r = g.r, gl = stGl;
+    const w = Math.max(16, Math.round(r.W * .5)), h = Math.max(16, Math.round(r.H * .5));
+    if (stCv.width !== w || stCv.height !== h) { stCv.width = w; stCv.height = h; }
+    gl.viewport(0, 0, w, h);
+    const blurPx = amb.blur ? Math.max(4, Math.round(r.dh * .0025 * amb.blur)) : 0;
+    const flt = [blurPx ? `blur(${blurPx}px)` : '', amb.contrast !== 100 ? `contrast(${amb.contrast}%)` : '',
+      amb.brightness !== 100 ? `brightness(${amb.brightness}%)` : '', amb.saturation !== 100 ? `saturate(${amb.saturation}%)` : ''].filter(Boolean).join(' ');
+    if (stCv.style.filter !== flt) stCv.style.filter = flt;
+    const vw = video.videoWidth, vh = video.videoHeight;
+    gl.uniform2f(stU.uSz, r.W, r.H);
+    gl.uniform4f(stU.uR, r.dx, r.dy, r.dw, r.dh);
+    gl.uniform4f(stU.uS, g.sx / vw, g.sy / vh, g.sw / vw, g.sh / vh);
+    gl.uniform2f(stU.uK, amb.stReach / 100, amb.stCurve / 100);
+    gl.bindTexture(gl.TEXTURE_2D, stTex);
+    try { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video); } catch (e) { return; }
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
+  /* ---- settings panel ---- */
+  const AMBI_CTRL = [
+    ['select', 'bg', 'Background', 'glow or extended video', [[1, 'Ambilight'], [3, 'Stretch fill'], [2, 'Extended video'], [0, 'Off']]],
+    ['range', 'stReach', 'Stretch reach', 5, 100],
+    ['range', 'stCurve', 'Stretch curve', 30, 200],
+    ['select', 'extAlign', 'Original inside extended', 'how it was placed', [[0, 'Scaled to fit'], [1, 'Native pixels']]],
+    ['range', 'extZoom', 'Extended zoom', 50, 200],
+    ['range', 'extX', 'Extended shift X', -50, 50],
+    ['range', 'extY', 'Extended shift Y', -50, 50],
+    ['select', 'fit', 'Spread mode', 'Fit = reach player edge', [[1, 'Fit player'], [0, 'Manual']]],
+    ['range', 'blur', 'Blur', 0, 100],
+    ['range', 'edge', 'Edge size', 2, 50],
+    ['range', 'spread', 'Spread (Manual mode)', 0, 200],
+    ['range', 'fadeStart', 'Spread fade start', -50, 100],
+    ['range', 'fadeCurve', 'Spread fade curve', 1, 100],
+    ['range', 'brightness', 'Brightness', 0, 200],
+    ['range', 'contrast', 'Contrast', 0, 200],
+    ['range', 'saturation', 'Saturation', 0, 200],
+    ['range', 'debanding', 'Debanding (noise)', 0, 100],
+    ['range', 'flicker', 'Flicker reduction', 0, 100],
+    ['select', 'blending', 'Smooth motion', 'frame blending', [[1, 'On'], [0, 'Off']]],
+    ['range', 'blendSmooth', 'Smooth motion strength', 0, 100],
+    ['dirs'], ['reset']
+  ];
+  const ambiCtl = document.getElementById('ambiControls');
+  const ambiSync = [];
+  const ambiChanged = () => { saveAmb(); ambiDirty = true; applyBg(); refreshExt(); if (loopOn) { cancelAnimationFrame(rafId); rafT = 0; rafId = requestAnimationFrame(onRaf); } tick(); };
+  const mkLine = (name, sub) => {
+    const line = document.createElement('div'); line.className = 'setting-line';
+    const left = document.createElement('div');
+    const n = document.createElement('div'); n.className = 'setting-name'; n.textContent = name;
+    const v = document.createElement('div'); v.className = 'setting-value'; v.textContent = sub || '';
+    left.append(n, v); line.append(left);
+    return { line, v };
+  };
+  for (const c of AMBI_CTRL) {
+    if (c[0] === 'range') {
+      const [, key, label, min, max] = c, { line, v } = mkLine(label, '');
+      const inp = Object.assign(document.createElement('input'), { type: 'range', min, max, step: 1 });
+      inp.style.maxWidth = '130px'; inp.setAttribute('aria-label', label);
+      const show = () => { inp.value = amb[key]; v.textContent = amb[key] + '%'; };
+      inp.addEventListener('input', () => { amb[key] = +inp.value; v.textContent = amb[key] + '%'; ambiChanged(); });
+      line.append(inp); ambiCtl.append(line); ambiSync.push(show);
+    } else if (c[0] === 'select') {
+      const [, key, label, sub, opts] = c, { line } = mkLine(label, sub);
+      const sel = document.createElement('select'); sel.className = 'setting-select'; sel.setAttribute('aria-label', label);
+      opts.forEach(([val, txt]) => sel.append(Object.assign(document.createElement('option'), { value: val, textContent: txt })));
+      sel.addEventListener('change', () => { amb[key] = +sel.value; ambiChanged(); });
+      line.append(sel); ambiCtl.append(line); ambiSync.push(() => { sel.value = String(amb[key]); });
+    } else if (c[0] === 'dirs') {
+      const { line } = mkLine('Glow directions', 'tap to switch a side off');
+      const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end';
+      const btns = [['top', 'Top'], ['right', 'Right'], ['bottom', 'Bottom'], ['left', 'Left']].map(([key, txt]) => {
+        const b = Object.assign(document.createElement('button'), { type: 'button', className: 'setting-action dir-btn', textContent: txt });
+        b.addEventListener('click', () => { amb[key] = amb[key] ? 0 : 1; b.setAttribute('aria-pressed', String(!!amb[key])); ambiChanged(); });
+        wrap.append(b); return [key, b];
+      });
+      line.append(wrap); ambiCtl.append(line);
+      ambiSync.push(() => btns.forEach(([key, b]) => b.setAttribute('aria-pressed', String(!!amb[key]))));
+    } else if (c[0] === 'reset') {
+      const { line } = mkLine('Ambient settings', 'back to the defaults');
+      const b = Object.assign(document.createElement('button'), { type: 'button', className: 'setting-action', textContent: 'Reset' });
+      b.addEventListener('click', () => { Object.assign(amb, AMBI_DEFAULTS); ambiSync.forEach(f => f()); ambiChanged(); });
+      line.append(b); ambiCtl.append(line);
+    }
+  }
+  ambiSync.forEach(f => f());
+
+  applyBg();
+  applyResizeMode();
+  setPlayIcon(false);
+})();
+</script>
+</body>
+</html>

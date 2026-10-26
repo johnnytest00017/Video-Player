@@ -1,0 +1,6 @@
+{
+  "appId": "com.ambientvideoplayer.app",
+  "appName": "Video Player",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}
