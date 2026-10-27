@@ -1,20 +1,22 @@
 /* ============ Tokens, reset, shared components ============ */
 :root {
-  /* neutral dark greys only: no coloured accent, the selected / primary state is simply the lightest grey */
-  --bg: #000;
-  --sheet: #111113;
-  --surface: #111113;
-  --surface-2: #1a1a1d;       /* a row */
-  --surface-3: #2a2a2e;       /* the filled part of a row / a selected segment */
+  /* charcoal screen, soft dark cards, one yellow highlight and one white highlight (like the reference) */
+  --bg: #1a1a1a;
+  --sheet: #202020;
+  --surface: #202020;
+  --surface-2: #2b2b2b;       /* a card / row */
+  --surface-3: #3d3d3d;       /* filled part of a slider */
   --line: rgba(255,255,255,.07);
-  --text: #f1f1f3;
-  --text-2: #c4c4ca;
-  --muted: #8c8c94;
-  --faint: #66666d;
-  --accent: #ececef;
-  --accent-ink: #0c0c0e;
-  --radius: 14px;
-  --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --text: #f4f4f2;
+  --text-2: #cfcfcc;
+  --muted: #9a9a96;
+  --faint: #6f6f6b;
+  --accent: #f6d63b;          /* yellow */
+  --accent-ink: #1a1606;
+  --white: #f3f3f0;           /* white highlight card */
+  --white-ink: #161616;
+  --radius: 24px;
+  --font: "Google Sans", "Product Sans", "Avenir Next", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --ease: cubic-bezier(.2, .8, .2, 1);
 }
 
@@ -37,10 +39,10 @@ input[type=file] { display: none; }
   transition: background .18s, border-color .18s, transform .12s;
 }
 .btn:active { transform: scale(.97); }
-.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 650; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
 .btn.ghost { background: transparent; color: var(--text-2); }
 .btn.small { padding: 8px 14px; font-size: 12.5px; }
-.btn.danger { color: #d9a3a0; }
+.btn.danger { color: #e0a29d; }
 
 .pill {
   appearance: none; border: 1px solid #4a4a51; background: rgba(20,20,23,.9); color: var(--text);

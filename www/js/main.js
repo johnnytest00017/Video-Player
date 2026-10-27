@@ -18,6 +18,12 @@ window.addEventListener('orientationchange', () => setTimeout(requestLayout, 120
 
 video.addEventListener('error', () => { showFlash('Cannot play this file'); });
 
+/* greeting on the start screen */
+{
+  const hr = new Date().getHours(), g = document.getElementById('greeting');
+  if (g) g.textContent = hr < 5 ? 'Good night!' : hr < 12 ? 'Good morning!' : hr < 18 ? 'Good afternoon!' : 'Good evening!';
+}
+
 applySubStyle();
 applyBg();
 applyLayout();

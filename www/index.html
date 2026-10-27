@@ -10,7 +10,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="color-scheme" content="dark">
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#1a1a1a">
 <title>Video Player</title>
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/player.css">
@@ -79,21 +79,19 @@
       </div>
 
       <div class="upload-prompt" id="uploadPrompt">
-        <svg class="brand" viewBox="0 0 64 64" aria-hidden="true">
-          <defs>
-            <linearGradient id="bg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb347"/><stop offset=".55" stop-color="#ff5d8f"/><stop offset="1" stop-color="#6d63ff"/></linearGradient>
-            <filter id="bl1" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4.5"/></filter>
-          </defs>
-          <rect x="7" y="13" width="50" height="38" rx="11" fill="url(#bg1)" filter="url(#bl1)" opacity=".9"/>
-          <rect x="13" y="19" width="38" height="26" rx="7" fill="#0b0b0e" stroke="#2c2c34"/>
-          <path d="M28 26.5v11l9.5-5.5z" fill="#fff"/>
-        </svg>
-        <h1>Video Player</h1>
-        <p>Open a video to begin. Subtitles and an extended background are optional.</p>
-        <div class="upload-actions">
-          <button class="btn primary" id="pickVideo" type="button">Open video</button>
-          <button class="btn" id="pickSrt" type="button">Add subtitles</button>
-          <button class="btn ghost" id="pickExt" type="button">Extended video</button>
+        <div class="home-head">
+          <h1 id="greeting">Good afternoon!</h1>
+          <p>What are we watching?</p>
+        </div>
+        <div class="home-grid">
+          <button class="home-card yellow" id="pickVideo" type="button">
+            <span class="hc-title">Open video</span><span class="hc-sub">From your phone</span>
+            <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M20 10v44l38-22z" fill="currentColor"/></svg>
+          </button>
+          <div class="home-col">
+            <button class="home-card dark" id="pickExt" type="button"><span class="hc-title">Extended</span><span class="hc-sub">Background clip</span></button>
+            <button class="home-card white" id="pickSrt" type="button"><span class="hc-title">Subtitles</span><span class="hc-sub">Add an .srt file</span></button>
+          </div>
         </div>
       </div>
 

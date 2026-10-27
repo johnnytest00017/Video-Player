@@ -1,5 +1,5 @@
 /* ============ Stage, display, subtitles, controls ============ */
-.app { width: 100%; position: relative; background: #000; overflow: hidden; }
+.app { width: 100%; position: relative; background: var(--bg); overflow: hidden; }
 
 .stage {
   --display-h: 45%;
@@ -8,7 +8,7 @@
   --dh: min(var(--display-h), calc(100% - 300px));
   position: relative; isolation: isolate; width: 100%;
   height: 100vh; height: 100dvh; min-height: 480px;
-  display: flex; flex-direction: column; background: #000; overflow: hidden;
+  display: flex; flex-direction: column; background: var(--bg); overflow: hidden; overflow: clip;
 }
 
 /* ---------- display ---------- */
@@ -22,8 +22,8 @@
 .corner {
   position: absolute; z-index: 6; bottom: -1px; width: calc(var(--corner) + 1px); height: calc(var(--corner) + 1px); pointer-events: none; display: none;
 }
-.corner.l { left: -1px; background: radial-gradient(circle var(--corner) at calc(var(--corner) + 1px) 0, transparent calc(var(--corner) - .6px), #000 calc(var(--corner) + .4px)); }
-.corner.r { right: -1px; background: radial-gradient(circle var(--corner) at 0 0, transparent calc(var(--corner) - .6px), #000 calc(var(--corner) + .4px)); }
+.corner.l { left: -1px; background: radial-gradient(circle var(--corner) at calc(var(--corner) + 1px) 0, transparent calc(var(--corner) - .6px), var(--bg) calc(var(--corner) + .4px)); }
+.corner.r { right: -1px; background: radial-gradient(circle var(--corner) at 0 0, transparent calc(var(--corner) - .6px), var(--bg) calc(var(--corner) + .4px)); }
 .stage:not(.full):not(.round-off) .corner { display: block; }
 .stage.full { min-height: 0; }
 .stage.full .video-wrap { position: absolute; inset: 0; flex: none; }
@@ -66,19 +66,30 @@
 }
 .flash.on { opacity: 1; transform: translateY(-50%) scale(1); }
 
-/* ---------- start screen ---------- */
+/* ---------- start screen: greeting + cards ---------- */
 .upload-prompt {
-  position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 8px; padding: 22px; text-align: center;
-  background: radial-gradient(ellipse at 50% 38%, #1a1a1f 0%, #09090b 62%, #000 100%);
+  position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; justify-content: flex-end; gap: 18px;
+  padding: calc(22px + env(safe-area-inset-top, 0px)) 16px 16px; background: var(--bg);
 }
-.upload-prompt .brand { width: 84px; height: 84px; margin-bottom: 4px; }
-.upload-prompt h1 { font-size: clamp(22px, 5.6vw, 28px); margin: 0; letter-spacing: -.03em; font-weight: 700; }
-.upload-prompt p { margin: 0 0 6px; max-width: 280px; color: var(--muted); font-size: 13px; line-height: 1.5; }
-.upload-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
-.upload-actions .btn { padding: 10px 16px; font-size: 13px; }
-.upload-actions .btn.primary { padding: 12px 24px; font-size: 14px; }
-.btn.done::before { content: '✓ '; color: var(--text); }
+.home-head { margin: 0 6px auto; padding-top: 6px; }
+.upload-prompt h1 { margin: 0; font-size: clamp(30px, 8.6vw, 38px); line-height: 1.12; letter-spacing: -.025em; font-weight: 600; max-width: 9em; }
+.upload-prompt p { margin: 10px 0 0; color: var(--muted); font-size: 15px; }
+.home-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 12px; height: min(52%, 250px); min-height: 190px; }
+.home-col { display: grid; grid-template-rows: 1fr 1fr; gap: 12px; min-height: 0; }
+.home-card {
+  appearance: none; border: 0; text-align: left; cursor: pointer; position: relative; overflow: hidden; min-height: 0;
+  border-radius: 28px; padding: 18px 18px 16px; display: flex; flex-direction: column; justify-content: flex-start; gap: 3px;
+  transition: transform .12s;
+}
+.home-card:active { transform: scale(.975); }
+.hc-title { font-size: 21px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; }
+.hc-sub { font-size: 12.5px; opacity: .6; }
+.home-card.done .hc-sub::before { content: '✓ '; }
+.home-card.yellow { background: var(--accent); color: var(--accent-ink); }
+.home-card.dark { background: var(--surface-2); color: var(--text); box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+.home-card.white { background: var(--white); color: var(--white-ink); }
+.home-card.yellow svg { position: absolute; right: -6px; bottom: -6px; width: 62%; height: auto; opacity: .92; }
+.btn.done::before { content: '✓ '; }
 
 .play-overlay {
   position: absolute; z-index: 5; left: 50%; top: 50%; transform: translate(-50%, -50%);
@@ -114,8 +125,11 @@
 
 /* ---------- controls ---------- */
 .controls {
-  position: relative; z-index: 4; flex: 0 0 auto; padding: 0 6% calc(clamp(40px, 8dvh, 84px) + env(safe-area-inset-bottom, 0px));
+  position: relative; z-index: 4; flex: 0 0 auto; padding: 0 6% 40px;
   transition: opacity .28s, transform .28s var(--ease);
+}
+.stage:not(.full) .controls {
+  margin: 0 12px calc(12px + env(safe-area-inset-bottom, 0px)); padding: 8px 18px 14px; background: var(--surface-2); border-radius: 30px;
 }
 .stage.full .controls { position: absolute; left: 0; right: 0; bottom: 0; padding-bottom: calc(34px + env(safe-area-inset-bottom, 0px)); }
 .stage.full.ui-hidden .controls { opacity: 0; transform: translateY(14px); pointer-events: none; }
@@ -134,13 +148,14 @@
 .skip:last-child { justify-self: end; }
 .skip:hover, .skip:active { color: var(--text); }
 .center-play {
-  border: 0; background: transparent; color: #f3f3f5; width: 64px; height: 56px;
+  border: 0; background: var(--accent); color: var(--accent-ink); width: 72px; height: 56px;
   display: flex; justify-content: center; align-items: center; cursor: pointer; border-radius: 28px;
 }
-.center-play:active { background: rgba(255,255,255,.08); }
+.center-play:active { transform: scale(.95); }
 .center-play svg { width: 22px; height: 26px; }
 
 @media (max-width: 380px) {
+  .hc-title { font-size: 18px; }
   .text-section h2 { font-size: calc(21px * var(--sub-scale)); }
   .description { font-size: calc(12.5px * var(--sub-scale)); }
 }

@@ -374,7 +374,7 @@ function selectTab(id) {
   sheetBody.querySelectorAll('.panel').forEach(pn => pn.classList.toggle('hidden', pn.dataset.panel !== id));
   sheetBody.scrollTop = 0;
   const sel = tabs.querySelector('[aria-selected="true"]');
-  if (sel && sel.scrollIntoView) sel.scrollIntoView({ inline: 'center', block: 'nearest' });
+  if (sel) tabs.scrollLeft = sel.offsetLeft - (tabs.clientWidth - sel.offsetWidth) / 2;     // scroll only the tab strip, never the page
   syncAll();
 }
 tabs.addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) selectTab(b.dataset.tab); });
