@@ -13,8 +13,8 @@ import { haptic } from './haptics.js';
 import { setImmersive, keepAwake } from './native.js';
 
 const ICON_PLAY = '<svg viewBox="0 0 24 28" aria-hidden="true"><path d="M3 2.5Q3 0 5.3 1.4L22 12.2Q24 13.5 22 14.8L5.3 26.6Q3 28 3 25.5Z" fill="currentColor"/></svg>';
-const ICON_ENTER = 'M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4';
-const ICON_EXIT = 'M9 4v4a1 1 0 0 1-1 1H4M20 9h-4a1 1 0 0 1-1-1V4M15 20v-4a1 1 0 0 1 1-1h4M4 15h4a1 1 0 0 1 1 1v4';
+const ICON_ENTER = 'M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3';
+const ICON_EXIT = 'M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3';
 
 /* ---------- play / pause ---------- */
 export async function togglePlay() {
