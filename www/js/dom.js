@@ -54,6 +54,7 @@ export const speedLabel = $('speedLabel');
 export const loopToggle = $('loopToggle');
 export const skin = $('skin');
 export const skinFile = $('skinFile');
+export const petalFile = $('petalFile');
 
 export const sheet = $('sheet');
 export const tabs = $('tabs');

@@ -16,8 +16,8 @@ import { applySubStyle } from './subtitles.js';
 import { pickVideoFile, pickSrtFile, pickExtFile, removeSrt } from './media.js';
 import * as ext from './extended.js';
 import { haptic, hapticDemo } from './haptics.js';
-import { setLook, loadSkinFile, clearSkinImage, hasSkinImage } from './look.js';
-import { skinFile } from './dom.js';
+import { setLook, loadSkinFile, clearSkinImage, hasSkinImage, loadPetalFile, clearPetalImage, hasPetalImage } from './look.js';
+import { skinFile, petalFile } from './dom.js';
 
 /* ---------- tiny DOM helpers ---------- */
 const h = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -437,6 +437,18 @@ const writeList = list => { store.list = JSON.stringify(list); saveJSON(PRESET_K
   );
   showWhen(pic, () => look.skin !== 'none');
 
+  const petalRow = btnRow(
+    button('Choose picture', 'primary', () => petalFile.click()),
+    button('Remove', 'danger', () => clearPetalImage())
+  );
+  const petalPic = h('div');
+  petalPic.append(
+    slider({ label: 'Picture strength', min: 0, max: 100, get: () => look.petalOp, set: v => setLook({ petalOp: v }), def: LOOK_DEFAULTS.petalOp }),
+    slider({ label: 'Picture blur', min: 0, max: 40, get: () => look.petalBlur, set: v => setLook({ petalBlur: v }), fmt: v => v === 0 ? 'Off' : v + ' px', def: LOOK_DEFAULTS.petalBlur })
+  );
+  showWhen(petalPic, () => hasPetalImage());
+  petalFile.addEventListener('change', async () => { await loadPetalFile(petalFile.files && petalFile.files[0]); petalFile.value = ''; syncAll(); });
+
   p.append(
     group('Colours'),
     swatches({ label: 'Accent', colors: ACCENTS, get: () => look.accent, set: v => setLook({ accent: v }) }),
@@ -448,6 +460,15 @@ const writeList = list => { store.list = JSON.stringify(list); saveJSON(PRESET_K
       get: () => look.skin, set: v => { if (v === 'image' && !hasSkinImage()) { skinFile.click(); return; } setLook({ skin: v }); syncAll(); } }),
     imgRow, pic,
     note('Your picture is shrunk and kept inside the app. Lower the strength if the controls get hard to read.'),
+
+    group('Pads'),
+    slider({ label: 'Pad size', min: 50, max: 220, step: 5, get: () => look.padScale, set: v => setLook({ padScale: v }), def: LOOK_DEFAULTS.padScale }),
+    slider({ label: 'Space between pads', min: -20, max: 400, step: 2, fmt: v => v + ' px', get: () => look.padGap, set: v => setLook({ padGap: v }), def: LOOK_DEFAULTS.padGap }),
+    note('Push the space up and the pads slide off the edges of the screen. Pad size changes both pads.'),
+
+    group('Picture behind the petals'),
+    petalRow, petalPic,
+    note('The picture shows through the glass petals only, blurred like the navbar glass.'),
 
     group('Feel'),
     slider({ label: 'Vibration strength', sub: 'drag to feel it · 0 turns vibration off', min: 0, max: 100, step: 5, get: () => look.hapticStr, set: v => { setLook({ hapticStr: v }); haptic.thud(); }, fmt: v => v === 0 ? 'Off' : v + '%', def: LOOK_DEFAULTS.hapticStr }),

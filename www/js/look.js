@@ -7,6 +7,12 @@ let img = '';
 try { img = localStorage.getItem(IMG_KEY) || ''; } catch (e) { /* ignore */ }
 export const hasSkinImage = () => !!img;
 
+/* the picture behind the petals (shown through the glass petals, blurred) */
+const PIMG_KEY = 'avp.petalimg.v1';
+let pimg = '';
+try { pimg = localStorage.getItem(PIMG_KEY) || ''; } catch (e) { /* ignore */ }
+export const hasPetalImage = () => !!pimg;
+
 const HEX = /^#[0-9a-f]{6}$/i;
 /* readable text colour on top of a colour */
 export function inkFor(hex) {
@@ -21,6 +27,8 @@ const CIRCUIT = 'data:image/svg+xml,' + encodeURIComponent(
   '<circle cx="38" cy="30" r="2.4"/><circle cx="86" cy="44" r="2.4"/><circle cx="26" cy="104" r="2.4"/><circle cx="84" cy="116" r="2.4"/><circle cx="110" cy="32" r="2.4"/><circle cx="98" cy="78" r="2.4"/>' +
   '<rect x="118" y="86" width="22" height="14" rx="2"/><path d="M122 86v-4M129 86v-4M136 86v-4M122 100v4M129 100v4M136 100v4"/></svg>');
 
+const clampN = (v, a, b, d) => (typeof v === 'number' && isFinite(v) ? Math.min(b, Math.max(a, v)) : d);
+
 export function applyLook() {
   const accent = HEX.test(look.accent) ? look.accent : LOOK_DEFAULTS.accent;
   const shell = HEX.test(look.shell) ? look.shell : LOOK_DEFAULTS.shell;
@@ -29,6 +37,12 @@ export function applyLook() {
   r.setProperty('--accent-ink', inkFor(accent));
   r.setProperty('--shell', shell);
   r.setProperty('--reel-face', look.reelAccent ? accent : 'var(--white)');
+  r.setProperty('--ps', String(clampN(look.padScale, 50, 220, 100) / 100));
+  r.setProperty('--pgap', clampN(look.padGap, -20, 400, 72) + 'px');
+  r.setProperty('--pic-op', String(clampN(look.petalOp, 0, 100, 100) / 100));
+  r.setProperty('--pic-blur', clampN(look.petalBlur, 0, 40, 12) + 'px');
+  document.documentElement.classList.toggle('has-petal-img', !!pimg);
+  document.querySelectorAll('.pic').forEach(e => { e.style.backgroundImage = pimg ? `url("${pimg}")` : 'none'; });
   const kind = look.skin === 'image' && !img ? 'none' : look.skin;
   skin.className = 'skin ' + kind;
   skin.style.backgroundImage = kind === 'circuit' ? `url("${CIRCUIT}")` : kind === 'image' ? `url("${img}")` : 'none';
@@ -63,6 +77,33 @@ export function loadSkinFile(file) {
     im.onerror = () => { URL.revokeObjectURL(url); alert('Could not read that picture.'); resolve(false); };
     im.src = url;
   });
+}
+
+export function loadPetalFile(file) {
+  return new Promise(resolve => {
+    if (!file) return resolve(false);
+    const url = URL.createObjectURL(file), im = new Image();
+    im.onload = () => {
+      try {
+        const k = Math.min(1, 720 / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(im.naturalWidth * k)); c.height = Math.max(1, Math.round(im.naturalHeight * k));
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        pimg = c.toDataURL('image/jpeg', .85);
+        try { localStorage.setItem(PIMG_KEY, pimg); } catch (e) { alert('The picture is used now, but it is too big to be remembered for next time.'); }
+        applyLook(); emit('look');
+        resolve(true);
+      } catch (e) { resolve(false); }
+      URL.revokeObjectURL(url);
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); alert('Could not read that picture.'); resolve(false); };
+    im.src = url;
+  });
+}
+
+export function clearPetalImage() {
+  pimg = '';
+  try { localStorage.removeItem(PIMG_KEY); } catch (e) { /* ignore */ }
+  applyLook(); emit('look');
 }
 
 export function clearSkinImage() {
