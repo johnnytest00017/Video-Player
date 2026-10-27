@@ -4,9 +4,13 @@
 import { look } from './state.js';
 
 const cap = window.Capacitor;
-const plugin = cap && cap.Plugins && cap.Plugins.Haptics;
+let plugin = null;
+try {
+  plugin = cap && ((cap.Plugins && cap.Plugins.Haptics) ||
+    (cap.isNativePlatform && cap.isNativePlatform() && cap.registerPlugin ? cap.registerPlugin('Haptics') : null));
+} catch (e) { plugin = null; }
 const STYLES = ['LIGHT', 'MEDIUM', 'HEAVY'];
-const SCALE = [0, .75, 1, 1.7];            // strength: off · soft · normal · strong  (multiplies the web vibration length)
+const SCALE = [0, .8, 1.25, 2];            // strength: off · soft · normal · strong  (multiplies the web vibration length)
 let last = 0;
 
 /* ms = length of the web vibration, base = 0 light · 1 medium · 2 heavy for the native plugin */
@@ -17,22 +21,21 @@ function buzz(ms, base, selection) {
   if (now - last < 14) return;             // never a continuous buzz while dragging fast
   last = now;
   try {
+    const web = () => { if (navigator.vibrate) navigator.vibrate(Math.max(8, Math.round(ms * k))); };
     if (plugin) {
-      if (selection && look.haptics === 2) plugin.selectionChanged();
-      else plugin.impact({ style: STYLES[Math.max(0, Math.min(2, base + look.haptics - 2))] });
-    } else if (navigator.vibrate) {
-      navigator.vibrate(Math.max(3, Math.round(ms * k)));
-    }
+      const p = (selection && look.haptics === 2) ? plugin.selectionChanged() : plugin.impact({ style: STYLES[Math.max(0, Math.min(2, base + look.haptics - 2))] });
+      if (p && p.catch) p.catch(web);          // plugin not installed natively: fall back to the web API
+    } else web();
   } catch (e) { /* ignore */ }
 }
 
 export const haptic = {
-  tick: () => buzz(5, 0, true),            // a notch while dragging a slider
-  tap: () => buzz(9, 0),                   // an ordinary button
-  press: () => buzz(13, 1),                // the pad keys going down
-  thud: () => buzz(22, 2),                 // a detent: default value, either end, a switch flipping
-  grab: () => buzz(8, 0),                  // finger takes hold of a slider
-  release: () => buzz(6, 0)
+  tick: () => buzz(10, 0, true),            // a notch while dragging a slider
+  tap: () => buzz(16, 0),                   // an ordinary button
+  press: () => buzz(22, 1),                // the pad keys going down
+  thud: () => buzz(38, 2),                 // a detent: default value, either end, a switch flipping
+  grab: () => buzz(14, 0),                  // finger takes hold of a slider
+  release: () => buzz(10, 0)
 };
 
 /* Settings → Look → Test vibration */

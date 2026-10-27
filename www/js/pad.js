@@ -70,7 +70,10 @@ on('loop', paintLoop);
 paintLoop();
 
 /* the keys go down the moment the finger lands, like a real button (not on release, and not while scrolling: this card never scrolls) */
-controls.addEventListener('pointerdown', e => { if (e.target.closest('.pad-btn, .reel-btn')) haptic.press(); });
+controls.addEventListener('pointerdown', e => {
+  const k = e.target.closest && e.target.closest('.pad-btn, .reel-btn');
+  if (k) (k.classList.contains('reel-btn') ? haptic.thud : haptic.press)();   // the centre key is heavier than the petals
+});
 
 /* every other button in the app: a tick on click (a click is only sent for a real tap, never when a scroll started on the button) */
 document.addEventListener('click', e => {
