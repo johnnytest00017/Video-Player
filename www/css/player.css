@@ -11,6 +11,17 @@
 }
 
 /* ---------- display ---------- */
+/* Solid black patches over the two bottom corners of the display. Backstop: if the WebView ever lets the glow leak past the
+   rounded clip (it flickers white on some devices), these keep the corners black. */
+.stage::before {
+  content: ''; position: absolute; left: 0; right: 0; top: calc(var(--dh) - 29px); height: 29px;
+  z-index: 3; pointer-events: none;
+  background:
+    radial-gradient(circle 29px at 29px 0, transparent 27.5px, #000 28.5px) left top / 29px 29px no-repeat,
+    radial-gradient(circle 29px at 0 0, transparent 27.5px, #000 28.5px) right top / 29px 29px no-repeat;
+}
+.stage.full::before { display: none; }
+
 .video-wrap {
   position: relative; flex: 0 0 var(--dh);
   overflow: hidden; border-radius: 0 0 28px 28px;
@@ -23,7 +34,7 @@
 
 .layer { position: absolute; inset: 0; transform-origin: 0 0; }
 .ambient-layer { z-index: 0; pointer-events: none; }
-.fg-layer { z-index: 1; will-change: transform; pointer-events: none; }
+.fg-layer { z-index: 1; pointer-events: none; }
 #video {
   position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block;
   object-fit: contain; object-position: center bottom; background: transparent;
