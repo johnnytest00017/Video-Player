@@ -450,7 +450,7 @@ const writeList = list => { store.list = JSON.stringify(list); saveJSON(PRESET_K
     note('Your picture is shrunk and kept inside the app. Lower the strength if the controls get hard to read.'),
 
     group('Feel'),
-    segmented({ label: 'Haptics', options: [[0, 'Off'], [1, 'Soft'], [2, 'Normal'], [3, 'Strong']], get: () => look.haptics, set: v => { setLook({ haptics: v }); haptic.thud(); } }),
+    slider({ label: 'Vibration strength', sub: 'drag to feel it · 0 turns vibration off', min: 0, max: 100, step: 5, get: () => look.hapticStr, set: v => { setLook({ hapticStr: v }); haptic.thud(); }, fmt: v => v === 0 ? 'Off' : v + '%', def: LOOK_DEFAULTS.hapticStr }),
     btnRow(button('Test vibration', '', hapticDemo)),
     note('Sliders tick every 5 % while you drag, and thud at the default value and at both ends. The pad keys click the moment they go down. If you feel nothing, the app needs the Android vibrate permission (see the release notes).'),
 
