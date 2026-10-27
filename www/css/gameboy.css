@@ -1,0 +1,63 @@
+/* ============ Game Boy look: floating rounded video card, centred subtitles, glowing cyan D-pad + violet keys ============ */
+:root { --bg: #000; --cyan: #3fd6ee; --cyan-2: #1ba9c9; --violet: #b07cff; --violet-2: #7d4bd6; --shell: #0b0b0d; }
+html, body, .app, .stage { background: #000; }
+
+/* ---------- video: a rounded card with a margin all round ---------- */
+.stage:not(.full) .video-wrap {
+  margin: calc(10px + env(safe-area-inset-top, 0px)) 14px 0;
+  flex-basis: calc(var(--dh) - 24px);
+}
+/* top corners: same solid-patch trick the bottom ones use (no CSS clip on a playing video) */
+.stage:not(.full):not(.round-off) .video-wrap::before,
+.stage:not(.full):not(.round-off) .video-wrap::after {
+  content: ''; position: absolute; z-index: 6; top: -1px; width: calc(var(--corner) + 1px); height: calc(var(--corner) + 1px); pointer-events: none;
+}
+.stage:not(.full):not(.round-off) .video-wrap::before { left: -1px; background: radial-gradient(circle var(--corner) at calc(var(--corner) + 1px) calc(var(--corner) + 1px), transparent calc(var(--corner) - .6px), #000 calc(var(--corner) + .4px)); }
+.stage:not(.full):not(.round-off) .video-wrap::after { right: -1px; background: radial-gradient(circle var(--corner) at 0 calc(var(--corner) + 1px), transparent calc(var(--corner) - .6px), #000 calc(var(--corner) + .4px)); }
+.corner.l, .corner.r { --bg: #000; }
+
+/* big frosted play button in the middle of the card */
+.play-overlay { width: 84px; height: 84px; background: rgba(60,50,40,.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); box-shadow: 0 0 0 1px rgba(255,255,255,.06); }
+.play-overlay svg { width: 34px; height: 38px; margin-left: 5px; }
+
+/* ---------- subtitles: centred in the black area ---------- */
+.text-section { justify-content: center; padding: 8px 7%; }
+.text-section h2 { font-size: calc(clamp(24px, 7vw, 34px) * var(--sub-scale)); font-weight: 700; text-align: center; }
+
+/* ---------- controls: black glass housings, glowing rings ---------- */
+.stage:not(.full) .controls {
+  background: linear-gradient(#0d0d10, #060607); border-radius: 30px; margin: 0 10px calc(10px + env(safe-area-inset-bottom, 0px));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.07), inset 0 1px 0 rgba(255,255,255,.1);
+}
+.pad { background: #050507; box-shadow: inset 0 0 0 3px rgba(255,255,255,.09), inset 0 0 0 4px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.05); }
+input[type=range]::-webkit-slider-runnable-track { background: linear-gradient(to right, var(--cyan) 0 var(--p), rgba(255,255,255,.14) var(--p) 100%); }
+input[type=range]::-moz-range-progress { background: var(--cyan); }
+
+/* D-pad: four cyan petals */
+.dp {
+  color: #04323c; background: radial-gradient(circle at 50% 30%, #8cf0ff, var(--cyan) 55%, var(--cyan-2));
+  box-shadow: 0 0 10px -1px rgba(63,214,238,.65), inset 0 1px 0 rgba(255,255,255,.55);
+}
+.dp.up { border-radius: 60% 60% 22% 22%; } .dp.down { border-radius: 22% 22% 60% 60%; }
+.dp.left { border-radius: 60% 22% 22% 60%; } .dp.right { border-radius: 22% 60% 60% 22%; }
+.dp-core { background: #050507; color: var(--cyan); font-size: 10px; }
+.dp-core.off { color: #fff; }
+.dp:active { color: #fff; background: radial-gradient(circle at 50% 30%, var(--cyan), var(--cyan-2)); box-shadow: 0 0 16px 1px rgba(63,214,238,.9), inset 0 2px 5px rgba(0,0,0,.4); }
+.dp span { font-size: 9px; }
+
+/* reel (play / pause) keeps its white disc, with a soft glow */
+.reel-btn { box-shadow: 0 0 22px -4px rgba(255,255,255,.45), 0 8px 16px rgba(0,0,0,.6), inset 0 -4px 9px rgba(0,0,0,.16), inset 0 2px 0 rgba(255,255,255,.75); }
+.reel .ticks path { stroke: var(--violet-2); }
+
+/* four violet round keys */
+.faces::before { background: rgba(124,75,214,.10); box-shadow: inset 0 0 0 1px rgba(176,124,255,.25); }
+.face {
+  color: #2b1457; background: radial-gradient(circle at 40% 28%, #f0e2ff, var(--violet) 60%, var(--violet-2));
+  box-shadow: 0 0 10px -1px rgba(176,124,255,.7), inset 0 1px 0 rgba(255,255,255,.6);
+}
+.face svg { stroke-width: 2.2; }
+.face:active { color: #fff; box-shadow: 0 0 16px 1px rgba(176,124,255,.95), inset 0 2px 6px rgba(0,0,0,.45); }
+.face[aria-pressed="true"], .face[aria-expanded="true"] {
+  background: radial-gradient(circle at 40% 28%, #ffffff, #d7b9ff 60%, var(--violet)); color: #2b1457;
+  box-shadow: 0 0 20px 2px rgba(176,124,255,.95), inset 0 1px 0 rgba(255,255,255,.8);
+}
