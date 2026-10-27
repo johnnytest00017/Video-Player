@@ -10,7 +10,7 @@
 .crop-box { position: absolute; pointer-events: none; }
 .crop-line { position: absolute; z-index: 2; touch-action: none; cursor: grab; }
 .crop-line:active { cursor: grabbing; }
-.crop-line::before { content: ''; position: absolute; background: var(--accent); box-shadow: 0 0 0 1px rgba(0,0,0,.55); }
+.crop-line::before { content: ''; position: absolute; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.55); }
 .crop-line::after { content: ''; position: absolute; background: var(--accent); border-radius: 9px; box-shadow: 0 0 0 1px rgba(0,0,0,.55); }
 .crop-line.h { left: 0; right: 0; height: 44px; margin-top: -22px; }
 .crop-line.h::before { left: 0; right: 0; top: 21px; height: 2px; }
@@ -21,7 +21,7 @@
 
 /* ---------- frame editor ---------- */
 .adjust-editor { position: absolute; inset: 0; z-index: 7; pointer-events: none; }
-.adj-box { position: absolute; border: 1.5px dashed rgba(255,207,90,.85); border-radius: 2px; box-shadow: 0 0 0 1px rgba(0,0,0,.4); }
+.adj-box { position: absolute; border: 1.5px dashed rgba(255,255,255,.8); border-radius: 2px; box-shadow: 0 0 0 1px rgba(0,0,0,.4); }
 .adj-cross { position: absolute; inset: 0; opacity: .5; pointer-events: none;
   background:
     linear-gradient(rgba(255,255,255,.35), rgba(255,255,255,.35)) center / 1px 100% no-repeat,
@@ -38,6 +38,6 @@
   position: absolute; z-index: 4; left: 50%; bottom: 0; width: 120px; height: 34px; margin-left: -60px;
   display: flex; align-items: center; justify-content: center; pointer-events: auto; touch-action: none; cursor: ns-resize;
 }
-.disp-handle span { width: 54px; height: 5px; border-radius: 3px; background: var(--accent); box-shadow: 0 0 0 1px rgba(0,0,0,.5); }
+.disp-handle span { width: 54px; height: 5px; border-radius: 3px; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.5); }
 .stage.full .disp-handle { display: none; }
 .stage.full .adjust-editor .editor-bar { bottom: auto; top: calc(48px + env(safe-area-inset-top, 0px)); }

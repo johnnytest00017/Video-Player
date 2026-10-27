@@ -2,12 +2,12 @@
    Top and Bottom (and the Sides, inside Video) each choose Ambient, Mirror or Off and have their own options. */
 import { sheet, tabs, sheetBody, sheetClose, settingsToggle, video } from './dom.js';
 import {
-  S, view, disp, prefs, amb, modes, mir, crop, AMBI_DEFAULTS, MIR_DEFAULTS, MODES_DEFAULTS, VIEW_DEFAULTS, VIEW_LIMITS,
+  S, view, disp, prefs, amb, modes, mir, crop, AMBI_DEFAULTS, MIR_DEFAULTS, pickMir, MODES_DEFAULTS, VIEW_DEFAULTS, VIEW_LIMITS,
   DISP_LIMITS, DISP_DEFAULTS, PREF_DEFAULTS, RADIUS_MAX, bgMode, savePrefs, on, emit
 } from './state.js';
 import { APP_NAME, APP_VERSION } from './config.js';
 import { openLayer, closeLayer } from './ui.js';
-import { loadJSON, saveJSON } from './util.js';
+import { loadJSON, saveJSON, clamp } from './util.js';
 import { setView, setDisp, resetFrame, setAdjusting } from './frame.js';
 import { enterCropEdit, runAutoDetect, setCrop, cropNote } from './crop.js';
 import { ambiChanged } from './background.js';
@@ -22,24 +22,51 @@ const syncs = [];
 const syncAll = () => syncs.forEach(f => f());
 const group = text => h('div', 'group-label', text);
 
+const RESET_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.6-5.9M4 4v4.5h4.5"/></svg>';
+const decimals = step => { const t = String(step); return t.includes('.') ? t.split('.')[1].length : 0; };
+
+/* A "level" row: label inside, the part up to the value is filled, a grip marks the end, dots mark the levels.
+   The real <input type=range> lies invisibly over the whole row, so touch / drag / keyboard behave natively.
+   Tap the number to type an exact value; the ↺ button appears when the value differs from its default. */
 function slider({ label, sub, min, max, step = 1, get, set, fmt = v => v + '%', def }) {
-  const f = h('div', 'field'), head = h('div', 'field-head');
-  const val = def != null ? h('button', 'field-val') : h('span', 'field-val');
+  const wrap = h('div', 'lvwrap'), row = h('div', 'lv');
+  const name = h('span', 'lv-name', label);
+  const val = h('button', 'lv-val'); val.type = 'button'; val.title = 'Tap to type a value';
+  const rst = h('button', 'lv-reset'); rst.type = 'button'; rst.title = 'Reset'; rst.setAttribute('aria-label', 'Reset ' + label); rst.innerHTML = RESET_SVG;
   const input = Object.assign(document.createElement('input'), { type: 'range', min, max, step });
-  input.setAttribute('aria-label', label);
+  input.className = 'lv-input'; input.setAttribute('aria-label', label);
+  row.append(h('i', 'lv-fill'), h('i', 'lv-ticks'), h('i', 'lv-grip'), name, rst, val, input);
+  wrap.append(row);
+  if (sub) wrap.append(h('div', 'hint', sub));
+
+  const meas = () => { if (name.offsetWidth) row.style.setProperty('--gmin', (name.offsetWidth + 26) + 'px'); };
+  if (window.ResizeObserver) new ResizeObserver(meas).observe(row); else row.addEventListener('pointerdown', meas);
+  const dec = decimals(step), snap = v => +(Math.round(clamp(v, min, max) / step) * step).toFixed(dec);
   const paint = () => {
     const v = get();
     input.value = v; val.textContent = fmt(v);
-    input.style.setProperty('--p', ((v - min) / (max - min) * 100) + '%');
+    row.style.setProperty('--p', ((v - min) / (max - min) * 100) + '%');
+    rst.hidden = def == null || Math.abs(v - def) < step / 2;
   };
-  if (def != null) { val.type = 'button'; val.title = 'Tap to reset'; val.addEventListener('click', () => { set(def); paint(); }); }
   input.addEventListener('input', () => { set(+input.value); paint(); });
-  head.append(h('div', 'field-name', label), val);
-  f.append(head);
-  if (sub) f.append(h('div', 'field-sub', sub));
-  f.append(input);
+  rst.addEventListener('click', () => { set(def); paint(); });
+  val.addEventListener('click', () => {
+    const ed = Object.assign(document.createElement('input'), { type: 'number', className: 'lv-edit', value: get() });
+    ed.inputMode = 'decimal'; ed.step = step; ed.min = min; ed.max = max;
+    row.append(ed); val.style.visibility = 'hidden'; ed.focus(); ed.select();
+    let closed = false;
+    const done = ok => {
+      if (closed) return; closed = true;
+      const n = parseFloat(ed.value);
+      ed.remove(); val.style.visibility = '';
+      if (ok && Number.isFinite(n)) set(snap(n));
+      paint();
+    };
+    ed.addEventListener('keydown', e => { if (e.key === 'Enter') done(true); else if (e.key === 'Escape') done(false); });
+    ed.addEventListener('blur', () => done(true));
+  });
   syncs.push(paint);
-  return f;
+  return wrap;
 }
 
 function segmented({ label, options, get, set }) {
@@ -74,7 +101,7 @@ function button(text, cls, onClick) {
 }
 const btnRow = (...btns) => { const r = h('div', 'btn-row'); r.append(...btns); return r; };
 const note = text => h('p', 'note', text);
-const details = (title, ...nodes) => { const d = h('details', 'more'); d.append(h('summary', null, title), ...nodes); return d; };
+const details = (title, ...nodes) => { const d = h('details', 'more'); d.append(h('summary', null, title), ...nodes); d.addEventListener('toggle', syncAll); return d; };
 
 function fileRow(label, nameOf, ...actions) {
   const row = h('div', 'row'), left = h('div', 'grow');
@@ -109,19 +136,33 @@ function ambientLook() {
 }
 
 /* ============ ONE REGION: mode + its own options ============ */
+const px = v => (Number.isInteger(v) ? v : v.toFixed(1)) + ' px';
 function regionControls(key, title) {
   const c = mir[key], root = h('div');
   const M = (k, label, min, max, extra = {}) => slider(Object.assign({ label, min, max, get: () => c[k], set: v => { c[k] = v; ambiChanged(); }, def: MIR_DEFAULTS[k] }, extra));
+  const rampBox = h('div'); rampBox.append(
+    M('blurStart', 'Sharp zone', 0, 90, { sub: 'how far from the picture the reflection stays sharp' }),
+    M('blurRamp', 'Blur ramp', 1, 100, { sub: 'how far the blur takes to reach full strength' })
+  );
   const mirrorBox = h('div');
   mirrorBox.append(
-    group('Mirror'),
-    M('strip', 'Strip size', 3, 30, { sub: 'how much of the picture’s edge is reflected' }),
-    M('blur', 'Blur', 0, 100), M('saturation', 'Saturation', 0, 250), M('brightness', 'Brightness', 0, 200), M('contrast', 'Contrast', 0, 200),
+    group('Reflection'),
+    M('strip', 'Strip size', 2, 50, { sub: 'how much of the picture’s edge is reflected, then flipped again and again' }),
     M('fade', 'Edge fade', 0, 100, { sub: 'darkens the reflection with distance' }),
+    group('Blur'),
+    segmented({ options: [[0, 'Even'], [1, 'Grows with distance']], get: () => c.blurMode, set: v => { c.blurMode = v; ambiChanged(); syncAll(); } }),
+    M('blurPx', 'Blur', 0, 48, { step: .5, fmt: v => v === 0 ? 'Off' : px(v), sub: 'in real pixels · 0 = a perfectly sharp mirror' }),
+    showWhen(rampBox, () => c.blurMode === 1),
+    group('Colour'),
+    M('saturation', 'Saturation', 0, 250), M('brightness', 'Brightness', 0, 200), M('contrast', 'Contrast', 0, 200),
     group('Smart merge'),
-    M('merge', 'Merge amount', 0, 100, { fmt: v => v === 0 ? 'Off' : v + '%', sub: 'hides heads / moving objects at the edge' }),
+    M('merge', 'Merge amount', 0, 100, { fmt: v => v === 0 ? 'Off' : v + '%', sub: 'hides heads / moving objects at the edge · it paints a soft low-resolution colour map, so keep it Off for a crisp mirror' }),
     M('cov', 'Min colour coverage', 5, 60), M('sens', 'Motion sensitivity', 40, 250),
-    toggle({ label: 'Show merge zones', sub: 'pink = merged', get: () => mir.zones, set: v => { mir.zones = v ? 1 : 0; ambiChanged(); } })
+    toggle({ label: 'Show merge zones', sub: 'pink = merged', get: () => mir.zones, set: v => { mir.zones = v ? 1 : 0; ambiChanged(); } }),
+    btnRow(
+      button('Reset ' + title.toLowerCase() + ' mirror', '', () => { Object.assign(c, pickMir()); ambiChanged(); syncAll(); }),
+      button('Copy to all regions', '', () => { for (const k of ['top', 'bottom', 'side']) if (k !== key) Object.assign(mir[k], c); ambiChanged(); syncAll(); })
+    )
   );
   const ambientBox = h('div');
   ambientBox.append(ambientLook());
@@ -220,7 +261,7 @@ function applySnapshot(d) {
   Object.assign(view, VIEW_DEFAULTS, d.view || {});
   setDisp(Object.assign({}, DISP_DEFAULTS, d.disp || {}));
   Object.assign(modes, MODES_DEFAULTS, d.modes || {});
-  for (const k of ['top', 'bottom', 'side']) Object.assign(mir[k], MIR_DEFAULTS, (d.mir && d.mir[k]) || {});
+  for (const k of ['top', 'bottom', 'side']) Object.assign(mir[k], pickMir(d.mir && d.mir[k]));   // old presets: unknown keys dropped, missing ones default
   mir.zones = d.mir && d.mir.zones ? 1 : 0;
   const keepBg = amb.bg;
   Object.assign(amb, AMBI_DEFAULTS, d.amb || {}); amb.bg = keepBg;

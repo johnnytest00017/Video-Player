@@ -77,14 +77,26 @@ export const saveModes = () => saveJSON('avp.regions.v1', modes);
 export const anyMode = m => modes.top === m || modes.bottom === m || modes.side === m;
 
 /* ---- mirror settings, one set per region ---- */
-export const MIR_DEFAULTS = { strip: 10, blur: 25, brightness: 100, contrast: 100, saturation: 130, fade: 50, merge: 70, cov: 33, sens: 100 };
-export const mir = { top: Object.assign({}, MIR_DEFAULTS), bottom: Object.assign({}, MIR_DEFAULTS), side: Object.assign({}, MIR_DEFAULTS), zones: 0 };
+/* blurPx: real CSS pixels. blurMode 0 = the same blur everywhere, 1 = sharp next to the picture and growing with distance
+   (blurStart = % of the region that stays sharp, blurRamp = % of the region over which the blur grows).
+   merge is OFF by default: it paints a tiny low-resolution colour map over the mirror, which looks like heavy blur. */
+export const MIR_DEFAULTS = {
+  strip: 10, blurPx: 4, blurMode: 0, blurStart: 0, blurRamp: 60,
+  saturation: 100, brightness: 100, contrast: 100, fade: 35,
+  merge: 0, cov: 33, sens: 100
+};
+export const pickMir = (src, base = MIR_DEFAULTS) => {          // only known keys, numbers only (old saves had a different `blur` meaning)
+  const o = Object.assign({}, base);
+  if (src && typeof src === 'object') for (const k of Object.keys(MIR_DEFAULTS)) if (typeof src[k] === 'number' && isFinite(src[k])) o[k] = src[k];
+  return o;
+};
+export const mir = { top: pickMir(), bottom: pickMir(), side: pickMir(), zones: 0 };
 try {
-  const s = JSON.parse(localStorage.getItem('avp.mirror.v1') || '{}');
-  for (const k of ['top', 'bottom', 'side']) Object.assign(mir[k], s[k] || {});
+  const s = JSON.parse(localStorage.getItem('avp.mirror.v2') || '{}');
+  for (const k of ['top', 'bottom', 'side']) mir[k] = pickMir(s[k]);
   mir.zones = s.zones ? 1 : 0;
 } catch (e) { /* ignore */ }
-export const saveMir = () => saveJSON('avp.mirror.v1', mir);
+export const saveMir = () => saveJSON('avp.mirror.v2', mir);
 
 /* whole-background mode: 1 = per-region (Ambient / Mirror / Off), 2 = extended video, 3 = stretch fill */
 export const bgMode = () => (amb.bg === 2 && !S.extLoaded) ? 1 : (amb.bg === 2 || amb.bg === 3 ? amb.bg : 1);

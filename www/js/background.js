@@ -1,6 +1,6 @@
 /* Background orchestration: picks the active background (ambilight / stretch / extended / off) and runs the draw loop. */
-import { video, extVideo, ambi, stretchCv, mirTop, mirBottom, mirSide } from './dom.js';
-import { amb, modes, saveAmb, saveModes, saveMir, bgMode, anyMode, on } from './state.js';
+import { video, extVideo, ambi, stretchCv, mirTop, mirBottom, mirSide, mirTopB, mirBottomB, mirSideB } from './dom.js';
+import { amb, modes, mir, saveAmb, saveModes, saveMir, bgMode, anyMode, on } from './state.js';
 import * as ambilight from './ambilight.js';
 import * as mirror from './mirror.js';
 import * as stretch from './stretch.js';
@@ -28,6 +28,8 @@ export function applyBg() {
   mirTop.style.display = m === 1 && modes.top === 2 ? 'block' : 'none';
   mirBottom.style.display = m === 1 && modes.bottom === 2 ? 'block' : 'none';
   mirSide.style.display = m === 1 && modes.side === 2 ? 'block' : 'none';
+  const ramp = k => m === 1 && modes[k] === 2 && mir[k].blurMode === 1 && mir[k].blurPx > 0 ? 'block' : 'none';   // distance-blur overlay
+  mirTopB.style.display = ramp('top'); mirBottomB.style.display = ramp('bottom'); mirSideB.style.display = ramp('side');
   stretchCv.style.display = m === 3 ? 'block' : 'none';
   extVideo.style.display = m === 2 ? 'block' : 'none';
   ambilight.invalidate(); mirror.invalidate();

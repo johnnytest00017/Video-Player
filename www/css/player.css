@@ -78,7 +78,7 @@
 .upload-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 .upload-actions .btn { padding: 10px 16px; font-size: 13px; }
 .upload-actions .btn.primary { padding: 12px 24px; font-size: 14px; }
-.btn.done::before { content: '✓ '; color: #7ee787; }
+.btn.done::before { content: '✓ '; color: var(--text); }
 
 .play-overlay {
   position: absolute; z-index: 5; left: 50%; top: 50%; transform: translate(-50%, -50%);

@@ -4,19 +4,17 @@
    (ping-pong) until the gap is full, so every join is continuous. "Smart merge" then hides busy / minor-colour parts of the edge
    (a head, a moving object) by carrying calm colour in from the nearest calm positions. Each region (top, bottom, sides) has its
    own canvas and its own settings, and each canvas gets its own CSS blur / brightness / contrast / saturation. */
-import { video, mirTop, mirBottom, mirSide } from './dom.js';
+import { video, mirTop, mirBottom, mirSide, mirTopB, mirBottomB, mirSideB } from './dom.js';
 import { S, modes, mir } from './state.js';
 import { clamp } from './util.js';
 
-const PAD = 56;                       // canvases overscan the display so the blur never fades at its edges
+const PAD = 96;                       // canvases overscan the display so the blur never fades at its edges (blur max 48 px)
 const PW = 96, PH = 54, MR = 16;      // merge analysis grid, and depth of the merge overlay
 const smooth01 = (lo, hi, x) => { const t = clamp((x - lo) / (hi - lo), 0, 1); return t * t * (3 - 2 * t); };
 
-const REG = {
-  top: { cv: mirTop, g: mirTop.getContext('2d'), filter: '' },
-  bottom: { cv: mirBottom, g: mirBottom.getContext('2d'), filter: '' },
-  side: { cv: mirSide, g: mirSide.getContext('2d'), filter: '' }
-};
+/* cv = the reflection. cv2 = an optional second copy that carries the blur and is masked so the blur grows with distance. */
+const mk = (cv, cv2) => ({ cv, g: cv.getContext('2d'), cv2, g2: cv2.getContext('2d'), filter: '', filter2: '', mask: '' });
+const REG = { top: mk(mirTop, mirTopB), bottom: mk(mirBottom, mirBottomB), side: mk(mirSide, mirSideB) };
 const band = Object.assign(document.createElement('canvas'), { width: 1, height: 1 });
 const bg = band.getContext('2d');
 
@@ -152,9 +150,19 @@ const segs = (A, Lp, t, total) => {                                  // ping-pon
   return o;
 };
 
-function cssFilter(c) {
-  const blur = Math.round(c.blur * .25 * 10) / 10;
+function cssFilter(c, withBlur) {
+  const blur = withBlur ? Math.round(clamp(c.blurPx, 0, 48) * 10) / 10 : 0;          // real CSS pixels
   return [blur ? `blur(${blur}px)` : '', c.saturation !== 100 ? `saturate(${c.saturation}%)` : '', c.brightness !== 100 ? `brightness(${c.brightness}%)` : '', c.contrast !== 100 ? `contrast(${c.contrast}%)` : ''].filter(Boolean).join(' ');
+}
+
+/* Mask for the blurred copy: invisible (= sharp) up to `d0` px from the picture, fully visible from `d1` px on. Positions are canvas px. */
+function rampMask(key, c, X, Y, Wd, Hd, room) {
+  const d0 = Math.round(room * clamp(c.blurStart, 0, 100) / 100), d1 = d0 + Math.max(1, Math.round(room * clamp(c.blurRamp, 0, 100) / 100));
+  const T = 'transparent', O = '#000';
+  if (key === 'top') return `linear-gradient(to bottom, ${O} 0px, ${O} ${Y - d1}px, ${T} ${Y - d0}px, ${T} 100%)`;
+  if (key === 'bottom') { const e = Y + Hd; return `linear-gradient(to bottom, ${T} 0px, ${T} ${e + d0}px, ${O} ${e + d1}px, ${O} 100%)`; }
+  const r = X + Wd;
+  return `linear-gradient(to right, ${O} 0px, ${O} ${X - d1}px, ${T} ${X - d0}px, ${T} ${r + d0}px, ${O} ${r + d1}px, ${O} 100%)`;
 }
 
 /* darkens the far end of a region: 0 right at the picture (the join stays invisible), easing in with distance */
@@ -229,11 +237,12 @@ function drawSides(ctx) {
   }
 }
 
-function place(reg) {
-  const { cv } = reg;
-  if (cv.width !== cw) cv.width = cw;
-  if (cv.height !== ch) cv.height = ch;
-  Object.assign(cv.style, { left: -PAD + 'px', top: -PAD + 'px', width: cw + 'px', height: ch + 'px' });
+function place(reg, ramp) {
+  for (const cv of ramp ? [reg.cv, reg.cv2] : [reg.cv]) {
+    if (cv.width !== cw) cv.width = cw;
+    if (cv.height !== ch) cv.height = ch;
+    Object.assign(cv.style, { left: -PAD + 'px', top: -PAD + 'px', width: cw + 'px', height: ch + 'px' });
+  }
 }
 
 export function draw(newFrame) {
@@ -254,13 +263,23 @@ export function draw(newFrame) {
   for (const key of ['top', 'bottom', 'side']) {
     const reg = REG[key];
     if (!want[key]) continue;
-    place(reg);
-    const c = mir[key], f = cssFilter(c);
+    const c = mir[key], ramp = c.blurMode === 1 && c.blurPx > 0;
+    place(reg, ramp);
+    const f = cssFilter(c, !ramp);                                    // ramp: the reflection keeps only colour; the blurred copy gets the blur
     if (reg.filter !== f) { reg.filter = f; reg.cv.style.filter = f; }
     reg.g.clearRect(0, 0, cw, ch);
     const ctx = Object.assign({ g: reg.g, c }, base);
     if (key === 'top') { ctx.E = E.top; if (Y > PAD + 1) drawVertical(reg, true, ctx); }
     else if (key === 'bottom') { ctx.E = E.bot; if (r.H - (r.dy + r.dh) > 1) drawVertical(reg, false, ctx); }
     else drawSides(ctx);
+    if (ramp) {
+      reg.g2.clearRect(0, 0, cw, ch);
+      reg.g2.drawImage(reg.cv, 0, 0);
+      const f2 = cssFilter(c, true);
+      if (reg.filter2 !== f2) { reg.filter2 = f2; reg.cv2.style.filter = f2; }
+      const room = key === 'top' ? r.dy : key === 'bottom' ? r.H - (r.dy + r.dh) : Math.min(r.dx, r.W - (r.dx + r.dw));
+      const m = rampMask(key, c, X, Y, Wd, Hd, Math.max(1, room));
+      if (reg.mask !== m) { reg.mask = m; reg.cv2.style.webkitMaskImage = m; reg.cv2.style.maskImage = m; }
+    }
   }
 }
