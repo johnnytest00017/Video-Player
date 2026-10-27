@@ -1,8 +1,9 @@
-/* Settings bottom sheet: Frame · Crop · Ambient · Playback · Media. Built from small helpers so every row looks and behaves alike. */
+/* Settings bottom sheet: Top · Video · Bottom · Presets · Playback · Media.
+   Top and Bottom (and the Sides, inside Video) each choose Ambient, Mirror or Off and have their own options. */
 import { sheet, tabs, sheetBody, sheetClose, settingsToggle, video } from './dom.js';
 import {
-  S, view, disp, RADIUS_MAX, prefs, amb, crop, AMBI_DEFAULTS, VIEW_DEFAULTS, VIEW_LIMITS, DISP_LIMITS, DISP_DEFAULTS,
-  bgMode, savePrefs, on, emit
+  S, view, disp, prefs, amb, modes, mir, crop, AMBI_DEFAULTS, MIR_DEFAULTS, MODES_DEFAULTS, VIEW_DEFAULTS, VIEW_LIMITS,
+  DISP_LIMITS, DISP_DEFAULTS, PREF_DEFAULTS, RADIUS_MAX, bgMode, savePrefs, on, emit
 } from './state.js';
 import { APP_NAME, APP_VERSION } from './config.js';
 import { openLayer, closeLayer } from './ui.js';
@@ -19,7 +20,6 @@ import * as ext from './extended.js';
 const h = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 const syncs = [];
 const syncAll = () => syncs.forEach(f => f());
-
 const group = text => h('div', 'group-label', text);
 
 function slider({ label, sub, min, max, step = 1, get, set, fmt = v => v + '%', def }) {
@@ -73,8 +73,9 @@ function button(text, cls, onClick) {
   return b;
 }
 const btnRow = (...btns) => { const r = h('div', 'btn-row'); r.append(...btns); return r; };
+const note = text => h('p', 'note', text);
+const details = (title, ...nodes) => { const d = h('details', 'more'); d.append(h('summary', null, title), ...nodes); return d; };
 
-/* A row showing a file name with action buttons. */
 function fileRow(label, nameOf, ...actions) {
   const row = h('div', 'row'), left = h('div', 'grow');
   const name = h('div', 'field-sub ellipsis');
@@ -85,49 +86,89 @@ function fileRow(label, nameOf, ...actions) {
   return row;
 }
 
-/* ---------- presets: named snapshots, saved on the device ---------- */
-const PRESET_KEY = 'avp.presets.v1';
-const presetStore = (() => { const o = loadJSON(PRESET_KEY, { frame: '[]', ambient: '[]' }); return o; })();
-const readList = kind => { try { return JSON.parse(presetStore[kind]) || []; } catch (e) { return []; } };
-const writeList = (kind, list) => { presetStore[kind] = JSON.stringify(list); saveJSON(PRESET_KEY, presetStore); };
-
-function presetBox(kind, capture, apply) {
-  const box = h('div', 'presets');
-  const form = h('div', 'preset-form');
-  const input = Object.assign(document.createElement('input'), { type: 'text', placeholder: 'Preset name', maxLength: 24 });
-  input.setAttribute('aria-label', 'Preset name');
-  const save = button('Save current', 'primary', () => {
-    const name = input.value.trim() || ('Preset ' + (readList(kind).length + 1));
-    const list = readList(kind).filter(p => p.name !== name);          // same name = overwrite
-    list.push({ name, data: capture() });
-    writeList(kind, list); input.value = ''; paint();
-  });
-  form.append(input, save);
-  const list = h('div', 'preset-list');
-  const paint = () => {
-    list.textContent = '';
-    const items = readList(kind);
-    if (!items.length) list.append(h('p', 'note', 'No presets yet. Set things up how you like, name it and tap Save current.'));
-    items.forEach((p, i) => {
-      const row = h('div', 'preset-row');
-      const use = h('button', 'preset-use', p.name); use.type = 'button';
-      use.addEventListener('click', () => { apply(p.data); syncAll(); });
-      const del = h('button', 'icon-btn small', ''); del.type = 'button'; del.setAttribute('aria-label', 'Delete preset ' + p.name);
-      del.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
-      del.addEventListener('click', () => { const l = readList(kind); l.splice(i, 1); writeList(kind, l); paint(); });
-      row.append(use, del); list.append(row);
-    });
-  };
-  paint();
-  box.append(form, list);
-  return box;
-}
-
+/* show / hide a block depending on state */
+const showWhen = (node, test) => { syncs.push(() => node.classList.toggle('hidden', !test())); return node; };
 const panel = id => sheetBody.querySelector(`[data-panel="${id}"]`);
 
-/* ============ FRAME ============ */
+/* ============ AMBIENT LOOK (shared by every region set to Ambient) ============ */
+function ambientLook() {
+  const set = key => v => { amb[key] = v; ambiChanged(); };
+  const A = (key, label, min, max, extra = {}) => slider(Object.assign({ label, min, max, get: () => amb[key], set: set(key), def: AMBI_DEFAULTS[key] }, extra));
+  const spread = A('spread', 'Spread (manual)', 0, 200);
+  syncs.push(() => spread.classList.toggle('hidden', !!amb.fit));
+  return details('Ambient look',
+    note('Shared by every region that is set to Ambient.'),
+    segmented({ label: 'Spread', options: [[1, 'Fit player'], [0, 'Manual']], get: () => amb.fit, set: v => { amb.fit = v; ambiChanged(); syncAll(); } }),
+    A('blur', 'Blur', 0, 100), A('edge', 'Edge size', 2, 50), spread,
+    A('fadeStart', 'Fade start', -50, 100), A('fadeCurve', 'Fade curve', 1, 100),
+    A('brightness', 'Brightness', 0, 200), A('contrast', 'Contrast', 0, 200), A('saturation', 'Saturation', 0, 200),
+    A('debanding', 'Debanding (noise)', 0, 100), A('flicker', 'Flicker reduction', 0, 100),
+    toggle({ label: 'Smooth motion', sub: 'frame blending — more GPU work, switch off if the glow flickers', get: () => amb.blending, set: v => { amb.blending = v ? 1 : 0; ambiChanged(); } }),
+    A('blendSmooth', 'Smooth motion strength', 0, 100)
+  );
+}
+
+/* ============ ONE REGION: mode + its own options ============ */
+function regionControls(key, title) {
+  const c = mir[key], root = h('div');
+  const M = (k, label, min, max, extra = {}) => slider(Object.assign({ label, min, max, get: () => c[k], set: v => { c[k] = v; ambiChanged(); }, def: MIR_DEFAULTS[k] }, extra));
+  const mirrorBox = h('div');
+  mirrorBox.append(
+    group('Mirror'),
+    M('strip', 'Strip size', 3, 30, { sub: 'how much of the picture’s edge is reflected' }),
+    M('blur', 'Blur', 0, 100), M('saturation', 'Saturation', 0, 250), M('brightness', 'Brightness', 0, 200), M('contrast', 'Contrast', 0, 200),
+    M('fade', 'Edge fade', 0, 100, { sub: 'darkens the reflection with distance' }),
+    group('Smart merge'),
+    M('merge', 'Merge amount', 0, 100, { fmt: v => v === 0 ? 'Off' : v + '%', sub: 'hides heads / moving objects at the edge' }),
+    M('cov', 'Min colour coverage', 5, 60), M('sens', 'Motion sensitivity', 40, 250),
+    toggle({ label: 'Show merge zones', sub: 'pink = merged', get: () => mir.zones, set: v => { mir.zones = v ? 1 : 0; ambiChanged(); } })
+  );
+  const ambientBox = h('div');
+  ambientBox.append(ambientLook());
+  root.append(
+    segmented({ label: title + ' background', options: [[1, 'Ambient'], [2, 'Mirror'], [0, 'Off']], get: () => modes[key], set: v => { modes[key] = v; ambiChanged(); syncAll(); } }),
+    showWhen(mirrorBox, () => modes[key] === 2),
+    showWhen(ambientBox, () => modes[key] === 1)
+  );
+  return root;
+}
+
+/* ============ TOP / BOTTOM ============ */
+for (const [key, title] of [['top', 'Top'], ['bottom', 'Bottom']]) {
+  const p = panel(key);
+  p.append(
+    showWhen(note('Whole background is set to Stretch or Extended (Video tab), so these region settings are paused.'), () => bgMode() !== 1),
+    regionControls(key, title),
+    note(key === 'top' ? 'Top is everything above the picture.' : 'Bottom is everything below the picture.')
+  );
+}
+
+/* ============ VIDEO ============ */
 (() => {
-  const p = panel('frame');
+  const p = panel('video');
+
+  /* crop */
+  const sum = h('div', 'crop-summary'), cells = {};
+  [['t', 'Top'], ['b', 'Bottom'], ['l', 'Left'], ['r', 'Right']].forEach(([k, name]) => {
+    const c = h('div'), b = h('b', null, '0%'); c.append(b, h('span', null, name)); cells[k] = b; sum.append(c);
+  });
+  const status = h('p', 'crop-status');
+  syncs.push(() => {
+    for (const k of Object.keys(cells)) cells[k].textContent = Math.round(crop[k] * 100) + '%';
+    status.textContent = cropNote ? { auto: 'Bars detected automatically.', manual: 'Set by hand.' }[cropNote] || cropNote : '';
+  });
+
+  /* whole-background specials */
+  const set = key => v => { amb[key] = v; ambiChanged(); };
+  const A = (key, label, min, max, extra = {}) => slider(Object.assign({ label, min, max, get: () => amb[key], set: set(key), def: AMBI_DEFAULTS[key] }, extra));
+  const stretchBox = h('div'); stretchBox.append(A('stReach', 'Stretch reach', 5, 100), A('stCurve', 'Stretch curve', 30, 200), A('blur', 'Blur', 0, 100), A('brightness', 'Brightness', 0, 200), A('saturation', 'Saturation', 0, 200));
+  const extBox = h('div');
+  extBox.append(
+    fileRow('Extended clip', () => S.extName, button('Import', '', pickExtFile), button('Remove', 'danger', () => ext.clear())),
+    segmented({ label: 'Original inside extended', options: [[0, 'Scaled to fit'], [1, 'Native pixels']], get: () => amb.extAlign, set: v => { amb.extAlign = v; ambiChanged(); syncAll(); } }),
+    A('extZoom', 'Zoom', 50, 200), A('extX', 'Shift X', -50, 50), A('extY', 'Shift Y', -50, 50)
+  );
+
   p.append(
     group('Display'),
     slider({ label: 'Height', min: DISP_LIMITS.min, max: DISP_LIMITS.max, get: () => disp.h, set: v => setDisp({ h: v }), fmt: v => Math.round(v) + '%', def: DISP_DEFAULTS.h }),
@@ -141,116 +182,112 @@ const panel = id => sheetBody.querySelector(`[data-panel="${id}"]`);
     slider({ label: 'Stretch width', min: VIEW_LIMITS.stretchMin * 100, max: VIEW_LIMITS.stretchMax * 100, get: () => Math.round(view.sx * 100), set: v => setView({ sx: v / 100 }), def: 100 }),
     slider({ label: 'Stretch height', min: VIEW_LIMITS.stretchMin * 100, max: VIEW_LIMITS.stretchMax * 100, get: () => Math.round(view.sy * 100), set: v => setView({ sy: v / 100 }), def: 100 }),
     toggle({ label: 'Keep frame for next videos', sub: 'zoom and position stay when you open another file', get: () => prefs.keepView, set: v => { prefs.keepView = v; savePrefs(); } }),
-    btnRow(
-      button('Move & zoom on screen', 'primary', () => { closeSheet(); setAdjusting(true); }),
-      button('Reset frame', '', resetFrame)
-    ),
-    group('Presets'),
-    presetBox('frame',
-      () => ({ disp: { h: disp.h, fit: disp.fit, aspect: disp.aspect, radius: disp.radius }, view: Object.assign({}, view) }),
-      d => { Object.assign(view, VIEW_DEFAULTS, d.view); setDisp(d.disp); setView({}); }),
-    h('p', 'note', 'Anything the video does not cover is filled by the Ambient background. Pinch the display to zoom; in “Move & zoom” mode one finger drags the picture and the bar at the bottom resizes the display.')
-  );
-})();
+    btnRow(button('Move & zoom on screen', 'primary', () => { closeSheet(); setAdjusting(true); }), button('Reset frame', '', resetFrame)),
+    note('Pinch the display to zoom. In “Move & zoom” mode one finger drags the picture and the bar at the bottom resizes the display.'),
 
-/* ============ CROP ============ */
-(() => {
-  const p = panel('crop');
-  const sum = h('div', 'crop-summary'), cells = {};
-  [['t', 'Top'], ['b', 'Bottom'], ['l', 'Left'], ['r', 'Right']].forEach(([k, name]) => {
-    const c = h('div'), b = h('b', null, '0%'); c.append(b, h('span', null, name)); cells[k] = b; sum.append(c);
-  });
-  const status = h('p', 'crop-status');
-  const paint = () => {
-    for (const k of Object.keys(cells)) cells[k].textContent = Math.round(crop[k] * 100) + '%';
-    status.textContent = cropNote ? { auto: 'Bars detected automatically.', manual: 'Set by hand.' }[cropNote] || cropNote : '';
-  };
-  syncs.push(paint);
-  p.append(
-    group('Black bars'), sum, status,
-    btnRow(
-      button('Edit lines', 'primary', () => { closeSheet(); enterCropEdit(); }),
-      button('Auto-detect', '', () => runAutoDetect()),
-      button('Reset', '', () => setCrop({}, ''))
+    details('Crop black bars', sum, status,
+      btnRow(button('Edit lines', 'primary', () => { closeSheet(); enterCropEdit(); }), button('Auto-detect', '', () => runAutoDetect()), button('Reset', '', () => setCrop({}, ''))),
+      toggle({ label: 'Detect bars automatically', sub: 'when a video opens', get: () => prefs.autoCrop, set: v => { prefs.autoCrop = v; savePrefs(); } })
     ),
-    toggle({ label: 'Detect bars automatically', sub: 'when a video opens', get: () => prefs.autoCrop, set: v => { prefs.autoCrop = v; savePrefs(); } }),
-    h('p', 'note', 'Edit lines: drag the two horizontal and two vertical lines to cut any side. The ambient glow is built from the cropped picture.')
-  );
-})();
-
-/* ============ AMBIENT ============ */
-const ambiGroups = [];
-(() => {
-  const p = panel('ambient');
-  const set = key => v => { amb[key] = v; ambiChanged(); };
-  const A = (key, label, min, max, extra = {}) => slider(Object.assign({ label, min, max, get: () => amb[key], set: set(key), def: AMBI_DEFAULTS[key] }, extra));
-  const modeGroup = (modes, ...nodes) => { const d = h('div'); d.append(...nodes); ambiGroups.push({ d, modes }); return d; };
-
-  p.append(
-    segmented({
-      label: 'Background', options: [[1, 'Ambilight'], [3, 'Stretch'], [2, 'Extended'], [0, 'Off']],
-      get: bgMode,
-      set: v => {
-        if (v === 2 && !S.extLoaded) { pickExtFile(); return; }          // Extended needs a file first
-        amb.bg = v; ambiChanged(); syncAll();
-      }
-    }),
-
-    modeGroup([1],
-      group('Glow'),
-      segmented({ label: 'Spread', options: [[1, 'Fit player'], [0, 'Manual']], get: () => amb.fit, set: v => { amb.fit = v; ambiChanged(); syncAll(); } }),
-      A('edge', 'Edge size', 2, 50),
-      (() => { const s = A('spread', 'Spread (manual)', 0, 200); syncs.push(() => s.classList.toggle('hidden', !!amb.fit)); return s; })(),
-      A('fadeStart', 'Fade start', -50, 100),
-      A('fadeCurve', 'Fade curve', 1, 100)
-    ),
-    modeGroup([3],
-      group('Stretch'),
-      A('stReach', 'Reach', 5, 100),
-      A('stCurve', 'Curve', 30, 200)
-    ),
-    modeGroup([2],
-      group('Extended video'),
-      fileRow('Clip', () => S.extName,
-        button('Import', '', pickExtFile), button('Remove', 'danger', () => ext.clear())),
-      segmented({ label: 'Original inside extended', options: [[0, 'Scaled to fit'], [1, 'Native pixels']], get: () => amb.extAlign, set: v => { amb.extAlign = v; ambiChanged(); syncAll(); } }),
-      A('extZoom', 'Zoom', 50, 200),
-      A('extX', 'Shift X', -50, 50),
-      A('extY', 'Shift Y', -50, 50),
-      h('p', 'note', 'Adjust Zoom / Shift until the middle of the extended clip lines up with the real picture.')
-    ),
-    modeGroup([1, 3],
-      group('Look'),
-      A('blur', 'Blur', 0, 100),
-      A('brightness', 'Brightness', 0, 200),
-      A('contrast', 'Contrast', 0, 200),
-      A('saturation', 'Saturation', 0, 200)
+    details('Sides (left & right)', regionControls('side', 'Sides')),
+    details('Whole background',
+      note('Regions = Top / Bottom / Sides as set in their tabs. Stretch and Extended fill the whole display instead.'),
+      segmented({
+        options: [[1, 'Regions'], [3, 'Stretch'], [2, 'Extended']],
+        get: bgMode,
+        set: v => {
+          if (v === 2 && !S.extLoaded) { pickExtFile(); return; }           // Extended needs a file first
+          amb.bg = v; ambiChanged(); syncAll();
+        }
+      }),
+      showWhen(stretchBox, () => bgMode() === 3),
+      showWhen(extBox, () => bgMode() === 2)
     )
   );
+})();
 
-  /* advanced ambilight options tucked away */
-  const adv = h('details', 'more'); adv.append(h('summary', null, 'Advanced'));
-  const dirs = h('div', 'field'); dirs.append(h('div', 'field-name', 'Glow sides'));
-  const chips = h('div', 'chips');
-  const dirBtns = [['top', 'Top'], ['right', 'Right'], ['bottom', 'Bottom'], ['left', 'Left']].map(([key, text]) => {
-    const b = h('button', 'chip', text); b.type = 'button';
-    b.addEventListener('click', () => { amb[key] = amb[key] ? 0 : 1; ambiChanged(); syncAll(); });
-    chips.append(b); return [key, b];
+/* ============ PRESETS — one snapshot of everything ============ */
+const copy = o => JSON.parse(JSON.stringify(o));
+const snapshot = () => {
+  const a = copy(amb); delete a.bg;
+  return {
+    disp: { h: disp.h, fit: disp.fit, aspect: disp.aspect, radius: disp.radius },
+    view: copy(view), modes: copy(modes), mir: copy(mir), amb: a,
+    prefs: { skip: prefs.skip, subScale: prefs.subScale, loop: prefs.loop }
+  };
+};
+function applySnapshot(d) {
+  Object.assign(view, VIEW_DEFAULTS, d.view || {});
+  setDisp(Object.assign({}, DISP_DEFAULTS, d.disp || {}));
+  Object.assign(modes, MODES_DEFAULTS, d.modes || {});
+  for (const k of ['top', 'bottom', 'side']) Object.assign(mir[k], MIR_DEFAULTS, (d.mir && d.mir[k]) || {});
+  mir.zones = d.mir && d.mir.zones ? 1 : 0;
+  const keepBg = amb.bg;
+  Object.assign(amb, AMBI_DEFAULTS, d.amb || {}); amb.bg = keepBg;
+  Object.assign(prefs, { skip: PREF_DEFAULTS.skip, subScale: PREF_DEFAULTS.subScale, loop: PREF_DEFAULTS.loop }, d.prefs || {});
+  savePrefs(); syncSkipLabels(); applySubStyle();
+  setView({});
+  ambiChanged(); syncAll();
+}
+const baseSnapshot = (over = {}) => ({
+  disp: Object.assign({}, DISP_DEFAULTS), view: Object.assign({}, VIEW_DEFAULTS),
+  modes: Object.assign({}, MODES_DEFAULTS, over.modes || {}),
+  mir: { top: Object.assign({}, MIR_DEFAULTS), bottom: Object.assign({}, MIR_DEFAULTS), side: Object.assign({}, MIR_DEFAULTS), zones: 0 },
+  amb: (() => { const a = Object.assign({}, AMBI_DEFAULTS); delete a.bg; return a; })(),
+  prefs: { skip: PREF_DEFAULTS.skip, subScale: PREF_DEFAULTS.subScale, loop: PREF_DEFAULTS.loop }
+});
+const BUILT_IN = [
+  { name: 'Default', data: baseSnapshot() },
+  { name: 'Mirror everywhere', data: baseSnapshot({ modes: { top: 2, bottom: 2, side: 2 } }) },
+  { name: 'Mirror top · glow bottom', data: baseSnapshot({ modes: { top: 2, bottom: 1, side: 1 } }) },
+  { name: 'No background', data: baseSnapshot({ modes: { top: 0, bottom: 0, side: 0 } }) }
+];
+const PRESET_KEY = 'avp.presets.v2';
+const store = loadJSON(PRESET_KEY, { list: '[]' });
+const readList = () => { try { return JSON.parse(store.list) || []; } catch (e) { return []; } };
+const writeList = list => { store.list = JSON.stringify(list); saveJSON(PRESET_KEY, store); };
+
+(() => {
+  const p = panel('presets');
+  const input = Object.assign(document.createElement('input'), { type: 'text', placeholder: 'Preset name', maxLength: 24 });
+  input.setAttribute('aria-label', 'Preset name');
+  const list = h('div', 'preset-list');
+  const paint = () => {
+    list.textContent = '';
+    const add = (item, deletable, i) => {
+      const row = h('div', 'preset-row');
+      const use = h('button', 'preset-use', item.name); use.type = 'button';
+      use.addEventListener('click', () => applySnapshot(item.data));
+      row.append(use);
+      if (deletable) {
+        const del = h('button', 'icon-btn small'); del.type = 'button'; del.setAttribute('aria-label', 'Delete preset ' + item.name);
+        del.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+        del.addEventListener('click', () => { const l = readList(); l.splice(i, 1); writeList(l); paint(); });
+        row.append(del);
+      }
+      list.append(row);
+    };
+    const mine = readList();
+    list.append(group('Your presets'));
+    if (!mine.length) list.append(note('Nothing saved yet. Set the whole player up how you like it, name it above and tap Save.'));
+    mine.forEach((it, i) => add(it, true, i));
+    list.append(group('Built-in'));
+    BUILT_IN.forEach(it => add(it, false));
+  };
+  const save = button('Save', 'primary', () => {
+    const name = input.value.trim() || ('Preset ' + (readList().length + 1));
+    const l = readList().filter(x => x.name !== name);                 // same name = overwrite
+    l.push({ name, data: snapshot() });
+    writeList(l); input.value = ''; paint();
   });
-  syncs.push(() => dirBtns.forEach(([key, b]) => b.setAttribute('aria-pressed', String(!!amb[key]))));
-  dirs.append(chips);
-  adv.append(
-    A('debanding', 'Debanding (noise)', 0, 100),
-    A('flicker', 'Flicker reduction', 0, 100),
-    toggle({ label: 'Smooth motion', sub: 'frame blending', get: () => amb.blending, set: v => { amb.blending = v ? 1 : 0; ambiChanged(); } }),
-    A('blendSmooth', 'Smooth motion strength', 0, 100),
-    dirs
+  const form = h('div', 'preset-form'); form.append(input, save);
+  p.append(
+    group('Save everything'),
+    note('A preset stores the display, video position and zoom, Top / Bottom / Sides backgrounds with all their mirror and ambient options, and the subtitle size and skip interval. Crop is per video and is not stored.'),
+    form, list,
+    btnRow(button('Reset everything to default', 'danger', () => applySnapshot(BUILT_IN[0].data)))
   );
-  ambiGroups.push({ d: adv, modes: [1] });
-  const ambKeep = () => { const o = Object.assign({}, amb); delete o.bg; return o; };
-  p.append(adv, group('Presets'), presetBox('ambient', ambKeep, d => { Object.assign(amb, d); ambiChanged(); syncAll(); }), btnRow(button('Reset ambient settings', '', () => { Object.assign(amb, AMBI_DEFAULTS, { bg: bgMode() === 2 ? 2 : AMBI_DEFAULTS.bg }); ambiChanged(); syncAll(); })));
-
-  syncs.push(() => { const m = bgMode(); ambiGroups.forEach(({ d, modes }) => d.classList.toggle('hidden', !modes.includes(m))); });
+  paint();
 })();
 
 /* ============ PLAYBACK ============ */
@@ -280,7 +317,7 @@ const ambiGroups = [];
 (() => {
   const p = panel('media');
   const about = h('div', 'about');
-  about.innerHTML = `<b>${APP_NAME}</b> · v${APP_VERSION}<br>Ambient light engine from <i>youtube-ambilight</i> by Wessel Kroos (MIT).`;
+  about.innerHTML = `<b>${APP_NAME}</b> · v${APP_VERSION}<br>Ambient light engine from <i>youtube-ambilight</i> by Wessel Kroos (MIT).<br>Mirror background from the “ambient video player” v27.`;
   p.append(
     group('Files'),
     fileRow('Video', () => S.videoName, button('Open', '', pickVideoFile)),
@@ -291,12 +328,12 @@ const ambiGroups = [];
 })();
 
 /* ============ sheet open / close + tabs ============ */
-let current = 'frame';
 function selectTab(id) {
-  current = id;
   [...tabs.children].forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === id)));
   sheetBody.querySelectorAll('.panel').forEach(pn => pn.classList.toggle('hidden', pn.dataset.panel !== id));
   sheetBody.scrollTop = 0;
+  const sel = tabs.querySelector('[aria-selected="true"]');
+  if (sel && sel.scrollIntoView) sel.scrollIntoView({ inline: 'center', block: 'nearest' });
   syncAll();
 }
 tabs.addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) selectTab(b.dataset.tab); });
@@ -328,4 +365,4 @@ on('request-close-sheet', closeSheet);
 const live = () => { if (S.sheetOpen) syncAll(); };
 ['view', 'disp', 'crop', 'amb-sync', 'media', 'speed'].forEach(ev => on(ev, live));
 on('layout', live);
-selectTab('frame');
+selectTab('video');

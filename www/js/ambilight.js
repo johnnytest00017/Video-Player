@@ -9,11 +9,11 @@
 
    The glow is built from the VISIBLE part of the picture (after crop, zoom, move): see setGeometry(). */
 import { video, ambi, ambiFilter, ambiProj, ambiNoise } from './dom.js';
-import { S, amb, bgMode } from './state.js';
+import { S, amb, modes, bgMode } from './state.js';
 import { clamp, mkCv } from './util.js';
 
 const INNER = 2;          // scaled-down layers inside the picture (they smooth the join with the picture's edge)
-const MAXPOS = 10;        // most rings outside the picture in "Fit player" mode (keeps it light on phones)
+const MAXPOS = 6;         // most rings outside the picture in "Fit player" mode (fewer canvases = steadier on phones)
 
 const pr = { list: [], w: 0, h: 0 };
 let dirty = true, cleared = true, snap = true, lastAlpha = 1, blendT0 = 0, fPrev = null;
@@ -49,7 +49,8 @@ function shadowGradient(size, edge, keyframes, fadeOutFrom, horizontal) {
 
 function shadowRescale(scale, ps) {
   shadowCv.style.transform = `scale(${scale.x + .01}, ${scale.y + .01})`;
-  const key = JSON.stringify([scale, ps, amb.fadeCurve, amb.fadeStart, amb.top, amb.right, amb.bottom, amb.left]);
+  const dirs = { top: modes.top === 1, bottom: modes.bottom === 1, left: modes.side === 1, right: modes.side === 1 };
+  const key = JSON.stringify([scale, ps, amb.fadeCurve, amb.fadeStart, dirs]);
   if (key === shadowKey) return;
   shadowKey = key;
   sctx.clearRect(0, 0, SH, SH);
@@ -67,10 +68,10 @@ function shadowRescale(scale, ps) {
   const cx = sw * (edge.w + vid.w / 2), cy = sh * (edge.h + vid.h / 2), L = sw * edge.w, R = sw * (edge.w + vid.w), T = sh * edge.h, B = sh * (edge.h + vid.h);
   sctx.fillStyle = '#000';
   const poly = pts => { sctx.beginPath(); pts.forEach(([x, y], i) => i ? sctx.lineTo(x, y) : sctx.moveTo(x, y)); sctx.closePath(); sctx.fill(); };
-  if (!amb.top) poly([[0, 0], [L, T], [cx, cy], [R, T], [W, 0]]);
-  if (!amb.right) poly([[W, 0], [R, T], [cx, cy], [R, B], [W, H]]);
-  if (!amb.bottom) poly([[0, H], [L, B], [cx, cy], [R, B], [W, H]]);
-  if (!amb.left) poly([[0, 0], [L, T], [cx, cy], [L, B], [0, H]]);
+  if (!dirs.top) poly([[0, 0], [L, T], [cx, cy], [R, T], [W, 0]]);
+  if (!dirs.right) poly([[W, 0], [R, T], [cx, cy], [R, B], [W, H]]);
+  if (!dirs.bottom) poly([[0, H], [L, B], [cx, cy], [R, B], [W, H]]);
+  if (!dirs.left) poly([[0, 0], [L, T], [cx, cy], [L, B], [0, H]]);
 }
 
 /* ---- geometry: where the visible picture is, and which part of the video it shows ----
@@ -105,7 +106,7 @@ function layout() {
   Object.assign(ambiProj.style, { left: dx + 'px', top: dy + 'px', width: dw + 'px', height: dh + 'px' });
 
   // size of the small canvases the picture is drawn into (the blur hides the lower resolution)
-  const pMin = Math.max(257, Math.min(384, g.sw, g.sh)), ps = Math.max(pMin / g.sw, pMin / g.sh);
+  const pMin = Math.max(160, Math.min(256, g.sw, g.sh)), ps = Math.max(pMin / g.sw, pMin / g.sh);
   const w = Math.ceil(g.sw * ps), h = Math.ceil(g.sh * ps);
   if (pr.w !== w || pr.h !== h) { pr.w = w; pr.h = h; }
   for (const c of [buf, prevBuf, blendBuf]) { if (c.width !== w) c.width = w; if (c.height !== h) c.height = h; }
@@ -151,6 +152,7 @@ function layout() {
     amb.brightness !== 100 ? `brightness(${amb.brightness}%)` : '',
     amb.saturation !== 100 ? `saturate(${amb.saturation}%)` : ''
   ].filter(Boolean).join(' ');
+  ambiNoise.style.display = amb.debanding ? '' : 'none';           // a blended layer that is invisible still costs a composite
   ambiNoise.style.opacity = amb.debanding ? String(clamp(amb.debanding / 100, 0, 1)) : '0';
   ambi.style.display = bgMode() === 1 ? '' : 'none';
   return true;

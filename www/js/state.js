@@ -43,18 +43,48 @@ export const PREF_DEFAULTS = { autoCrop: true, keepAwake: true, loop: false, kee
 export const prefs = loadJSON('avp.prefs.v1', PREF_DEFAULTS);
 export const savePrefs = () => saveJSON('avp.prefs.v1', prefs);
 
-/* ---- ambient settings — persisted (same key as v1 so saved presets survive) ---- */
-export const AMBI_KEY = 'ambilightSettings.v1';
+/* ---- ambient settings — persisted. v2 key: v1 values are imported once (smooth motion is switched off: it redraws every screen frame). ---- */
+export const AMBI_KEY = 'ambilightSettings.v2';
 export const AMBI_DEFAULTS = {
   bg: 1, stReach: 35, stCurve: 80, extAlign: 0, extZoom: 100, extX: 0, extY: 0, fit: 1,
   blur: 30, edge: 12, spread: 60, fadeStart: 15, fadeCurve: 35,
   brightness: 100, contrast: 100, saturation: 115, debanding: 0,
-  flicker: 0, blending: 1, blendSmooth: 80,
+  flicker: 0, blending: 0, blendSmooth: 80,
   top: 1, right: 1, bottom: 1, left: 1
 };
 export const amb = Object.assign({}, AMBI_DEFAULTS);
-try { Object.assign(amb, JSON.parse(localStorage.getItem(AMBI_KEY) || '{}')); } catch (e) { /* ignore */ }
+try {
+  const v2 = localStorage.getItem(AMBI_KEY);
+  if (v2) Object.assign(amb, JSON.parse(v2));
+  else { Object.assign(amb, JSON.parse(localStorage.getItem('ambilightSettings.v1') || '{}'), { blending: 0 }); }
+} catch (e) { /* ignore */ }
 export const saveAmb = () => saveJSON(AMBI_KEY, amb);
 
-/* 0 off, 1 ambilight, 2 extended video, 3 stretch fill */
-export const bgMode = () => (amb.bg === 2 && !S.extLoaded) ? 1 : amb.bg;
+/* ---- per-region background: Top, Bottom, Sides each pick Ambient (1), Mirror (2) or Off (0) ---- */
+export const MODES_DEFAULTS = { top: 1, bottom: 1, side: 1 };
+export const modes = Object.assign({}, MODES_DEFAULTS);
+{
+  let raw = null;
+  try { raw = localStorage.getItem('avp.regions.v1'); } catch (e) { /* ignore */ }
+  if (raw) { try { Object.assign(modes, JSON.parse(raw)); } catch (e) { /* ignore */ } }
+  else {                                         // first run of this version: carry over the old glow-sides switches
+    modes.top = amb.top ? 1 : 0; modes.bottom = amb.bottom ? 1 : 0; modes.side = (amb.left && amb.right) ? 1 : 0;
+    if (amb.bg === 0) modes.top = modes.bottom = modes.side = 0;
+  }
+  if (amb.bg === 0) amb.bg = 1;
+}
+export const saveModes = () => saveJSON('avp.regions.v1', modes);
+export const anyMode = m => modes.top === m || modes.bottom === m || modes.side === m;
+
+/* ---- mirror settings, one set per region ---- */
+export const MIR_DEFAULTS = { strip: 10, blur: 25, brightness: 100, contrast: 100, saturation: 130, fade: 50, merge: 70, cov: 33, sens: 100 };
+export const mir = { top: Object.assign({}, MIR_DEFAULTS), bottom: Object.assign({}, MIR_DEFAULTS), side: Object.assign({}, MIR_DEFAULTS), zones: 0 };
+try {
+  const s = JSON.parse(localStorage.getItem('avp.mirror.v1') || '{}');
+  for (const k of ['top', 'bottom', 'side']) Object.assign(mir[k], s[k] || {});
+  mir.zones = s.zones ? 1 : 0;
+} catch (e) { /* ignore */ }
+export const saveMir = () => saveJSON('avp.mirror.v1', mir);
+
+/* whole-background mode: 1 = per-region (Ambient / Mirror / Off), 2 = extended video, 3 = stretch fill */
+export const bgMode = () => (amb.bg === 2 && !S.extLoaded) ? 1 : (amb.bg === 2 || amb.bg === 3 ? amb.bg : 1);

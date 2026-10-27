@@ -5,7 +5,8 @@ Android video player (Capacitor) with an **ambient glow**, subtitles, black-bar 
 ## Features
 
 - **Frame control** — the display and the video are separate: set the display height, then zoom, move and stretch the video inside it. Pinch to zoom, two fingers to move; *Move & zoom* mode adds one-finger drag and a handle to resize the display. Whatever the video does not cover is filled by the ambient background.
-- **Ambient background** — Ambilight glow, live Stretch fill, an optional Extended (outpainted) video, or off.
+- **Top / Bottom / Sides backgrounds** — each region is set to **Ambient** (glow), **Mirror** (reflected edge strip with blur, brightness, contrast, saturation, fade and smart merge) or **Off**. Stretch fill and Extended video are available as whole-background options in the Video tab.
+- **Presets** — one preset stores everything (display, video position and zoom, all three backgrounds with their options, subtitle size, skip interval).
 - **Crop** — automatic black-bar detection and four draggable cut lines.
 - **Subtitles** — SRT with Arabic main line + translation line, size and delay controls.
 - **Cinema layout** — fullscreen or landscape hides the controls while playing; the Android back button closes panels first.
@@ -22,7 +23,7 @@ www/
     layout.js         frame engine (crop + fit + zoom/move/stretch → one transform)
     frame.js          gestures, Move & zoom mode, display handle
     crop.js           crop editor + auto-detect
-    ambilight.js · stretch.js · extended.js · background.js    backgrounds + draw loop
+    ambilight.js · mirror.js · stretch.js · extended.js · background.js    backgrounds + draw loop
     subtitles.js · media.js · player.js                        content + transport
     settings.js       tabbed settings sheet
     state.js · ui.js · native.js · util.js · dom.js · config.js

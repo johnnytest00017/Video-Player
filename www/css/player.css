@@ -44,6 +44,8 @@
 .ambi-proj { position: absolute; left: 0; top: 0; width: 0; height: 0; }
 .ambi-proj canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; background: none; }
 .ambi-noise { position: absolute; inset: 0; opacity: 0; mix-blend-mode: overlay; background-size: 128px 128px; image-rendering: pixelated; }
+/* mirror canvases: one per region, positioned and sized by js/mirror.js */
+.mir { position: absolute; display: none; pointer-events: none; max-width: none; }
 #stretchCv { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: none; background: #000; transform: scale(1.06); pointer-events: none; }
 #extVideo { position: absolute; display: none; left: 0; top: 0; width: 0; height: 0; max-width: none; max-height: none; object-fit: fill; background: #000; pointer-events: none; }
 

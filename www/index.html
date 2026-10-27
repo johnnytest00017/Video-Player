@@ -30,6 +30,9 @@
           <div class="ambi-filter" id="ambiFilter"><div class="ambi-proj" id="ambiProj"></div></div>
           <div class="ambi-noise" id="ambiNoise"></div>
         </div>
+        <canvas class="mir" id="mirTop" aria-hidden="true"></canvas>
+        <canvas class="mir" id="mirBottom" aria-hidden="true"></canvas>
+        <canvas class="mir" id="mirSide" aria-hidden="true"></canvas>
       </div>
 
       <div class="layer fg-layer" id="fgLayer">
@@ -139,9 +142,10 @@
       <div class="sheet-grab" aria-hidden="true"></div>
       <header class="sheet-head">
         <nav class="tabs" id="tabs" role="tablist" aria-label="Settings sections">
-          <button role="tab" type="button" data-tab="frame" aria-selected="true">Frame</button>
-          <button role="tab" type="button" data-tab="crop" aria-selected="false">Crop</button>
-          <button role="tab" type="button" data-tab="ambient" aria-selected="false">Ambient</button>
+          <button role="tab" type="button" data-tab="top" aria-selected="false">Top</button>
+          <button role="tab" type="button" data-tab="video" aria-selected="true">Video</button>
+          <button role="tab" type="button" data-tab="bottom" aria-selected="false">Bottom</button>
+          <button role="tab" type="button" data-tab="presets" aria-selected="false">Presets</button>
           <button role="tab" type="button" data-tab="playback" aria-selected="false">Playback</button>
           <button role="tab" type="button" data-tab="media" aria-selected="false">Media</button>
         </nav>
@@ -150,9 +154,10 @@
         </button>
       </header>
       <div class="sheet-body" id="sheetBody">
-        <section class="panel" data-panel="frame" role="tabpanel"></section>
-        <section class="panel hidden" data-panel="crop" role="tabpanel"></section>
-        <section class="panel hidden" data-panel="ambient" role="tabpanel"></section>
+        <section class="panel hidden" data-panel="top" role="tabpanel"></section>
+        <section class="panel" data-panel="video" role="tabpanel"></section>
+        <section class="panel hidden" data-panel="bottom" role="tabpanel"></section>
+        <section class="panel hidden" data-panel="presets" role="tabpanel"></section>
         <section class="panel hidden" data-panel="playback" role="tabpanel"></section>
         <section class="panel hidden" data-panel="media" role="tabpanel"></section>
       </div>

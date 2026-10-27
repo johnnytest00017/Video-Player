@@ -1,7 +1,8 @@
 /* Background orchestration: picks the active background (ambilight / stretch / extended / off) and runs the draw loop. */
-import { video, extVideo, ambi, stretchCv, videoWrap } from './dom.js';
-import { S, amb, saveAmb, bgMode, on, emit } from './state.js';
+import { video, extVideo, ambi, stretchCv, mirTop, mirBottom, mirSide } from './dom.js';
+import { amb, modes, saveAmb, saveModes, saveMir, bgMode, anyMode, on } from './state.js';
 import * as ambilight from './ambilight.js';
+import * as mirror from './mirror.js';
 import * as stretch from './stretch.js';
 import * as ext from './extended.js';
 import { updateSubtitle } from './subtitles.js';
@@ -13,18 +14,23 @@ let loopOn = false, vfcId = 0, rafId = 0, rafT = 0, lastMT = -1, lastPF = -1, la
 function drawBackground(newFrame) {
   const m = bgMode();
   if (m === 3) stretch.draw();
-  else if (m === 1) ambilight.draw(newFrame);
+  else if (m === 1) {
+    if (anyMode(1)) ambilight.draw(newFrame);          // regions set to Ambient
+    if (anyMode(2)) mirror.draw(newFrame);             // regions set to Mirror
+  }
 }
 export function tick() { updateSubtitle(); drawBackground(video.paused); }
 
 /* Which layers are visible for the current mode. */
 export function applyBg() {
   const m = bgMode();
-  ambi.style.display = m === 1 ? '' : 'none';
+  ambi.style.display = m === 1 && anyMode(1) ? '' : 'none';
+  mirTop.style.display = m === 1 && modes.top === 2 ? 'block' : 'none';
+  mirBottom.style.display = m === 1 && modes.bottom === 2 ? 'block' : 'none';
+  mirSide.style.display = m === 1 && modes.side === 2 ? 'block' : 'none';
   stretchCv.style.display = m === 3 ? 'block' : 'none';
   extVideo.style.display = m === 2 ? 'block' : 'none';
-  if (m === 1) ambilight.invalidate();
-  if (m === 3) ambilight.invalidate();
+  ambilight.invalidate(); mirror.invalidate();
   if (m === 2) ext.refresh();
   ext.sync(true);
   tick();
@@ -32,7 +38,7 @@ export function applyBg() {
 
 /* A setting changed: save, rebuild, redraw. */
 export function ambiChanged() {
-  saveAmb();
+  saveAmb(); saveModes(); saveMir();
   ambilight.invalidate();
   applyBg();
   ext.refresh();
@@ -85,5 +91,5 @@ video.addEventListener('ended', stopLoop);
 video.addEventListener('seeking', () => ambilight.markSeek());
 ['seeked', 'loadeddata', 'loadedmetadata'].forEach(ev => video.addEventListener(ev, tick));
 
-on('layout', r => { ambilight.setGeometry(r); drawBackground(false); });
+on('layout', r => { ambilight.setGeometry(r); mirror.invalidate(); drawBackground(false); });
 on('bg-changed', applyBg);
