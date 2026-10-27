@@ -1,11 +1,12 @@
 /* Settings bottom sheet: Frame · Crop · Ambient · Playback · Media. Built from small helpers so every row looks and behaves alike. */
 import { sheet, tabs, sheetBody, sheetClose, settingsToggle, video } from './dom.js';
 import {
-  S, view, disp, prefs, amb, crop, AMBI_DEFAULTS, VIEW_DEFAULTS, VIEW_LIMITS, DISP_LIMITS, DISP_DEFAULTS,
+  S, view, disp, RADIUS_MAX, prefs, amb, crop, AMBI_DEFAULTS, VIEW_DEFAULTS, VIEW_LIMITS, DISP_LIMITS, DISP_DEFAULTS,
   bgMode, savePrefs, on, emit
 } from './state.js';
 import { APP_NAME, APP_VERSION } from './config.js';
 import { openLayer, closeLayer } from './ui.js';
+import { loadJSON, saveJSON } from './util.js';
 import { setView, setDisp, resetFrame, setAdjusting } from './frame.js';
 import { enterCropEdit, runAutoDetect, setCrop, cropNote } from './crop.js';
 import { ambiChanged } from './background.js';
@@ -84,6 +85,44 @@ function fileRow(label, nameOf, ...actions) {
   return row;
 }
 
+/* ---------- presets: named snapshots, saved on the device ---------- */
+const PRESET_KEY = 'avp.presets.v1';
+const presetStore = (() => { const o = loadJSON(PRESET_KEY, { frame: '[]', ambient: '[]' }); return o; })();
+const readList = kind => { try { return JSON.parse(presetStore[kind]) || []; } catch (e) { return []; } };
+const writeList = (kind, list) => { presetStore[kind] = JSON.stringify(list); saveJSON(PRESET_KEY, presetStore); };
+
+function presetBox(kind, capture, apply) {
+  const box = h('div', 'presets');
+  const form = h('div', 'preset-form');
+  const input = Object.assign(document.createElement('input'), { type: 'text', placeholder: 'Preset name', maxLength: 24 });
+  input.setAttribute('aria-label', 'Preset name');
+  const save = button('Save current', 'primary', () => {
+    const name = input.value.trim() || ('Preset ' + (readList(kind).length + 1));
+    const list = readList(kind).filter(p => p.name !== name);          // same name = overwrite
+    list.push({ name, data: capture() });
+    writeList(kind, list); input.value = ''; paint();
+  });
+  form.append(input, save);
+  const list = h('div', 'preset-list');
+  const paint = () => {
+    list.textContent = '';
+    const items = readList(kind);
+    if (!items.length) list.append(h('p', 'note', 'No presets yet. Set things up how you like, name it and tap Save current.'));
+    items.forEach((p, i) => {
+      const row = h('div', 'preset-row');
+      const use = h('button', 'preset-use', p.name); use.type = 'button';
+      use.addEventListener('click', () => { apply(p.data); syncAll(); });
+      const del = h('button', 'icon-btn small', ''); del.type = 'button'; del.setAttribute('aria-label', 'Delete preset ' + p.name);
+      del.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+      del.addEventListener('click', () => { const l = readList(kind); l.splice(i, 1); writeList(kind, l); paint(); });
+      row.append(use, del); list.append(row);
+    });
+  };
+  paint();
+  box.append(form, list);
+  return box;
+}
+
 const panel = id => sheetBody.querySelector(`[data-panel="${id}"]`);
 
 /* ============ FRAME ============ */
@@ -92,6 +131,7 @@ const panel = id => sheetBody.querySelector(`[data-panel="${id}"]`);
   p.append(
     group('Display'),
     slider({ label: 'Height', min: DISP_LIMITS.min, max: DISP_LIMITS.max, get: () => disp.h, set: v => setDisp({ h: v }), fmt: v => Math.round(v) + '%', def: DISP_DEFAULTS.h }),
+    slider({ label: 'Corner radius', min: 0, max: RADIUS_MAX, get: () => disp.radius, set: v => setDisp({ radius: v }), fmt: v => Math.round(v) + ' px', def: DISP_DEFAULTS.radius }),
     segmented({ label: 'Fit', options: [['fit', 'Fit'], ['fill', 'Fill'], ['stretch', 'Stretch'], ['native', '100%']], get: () => disp.fit, set: v => setDisp({ fit: v }) }),
     segmented({ label: 'Aspect ratio', options: [['auto', 'Auto'], ['16:9', '16:9'], ['4:3', '4:3'], ['21:9', '21:9'], ['1:1', '1:1']], get: () => disp.aspect, set: v => setDisp({ aspect: v }) }),
     group('Video'),
@@ -100,10 +140,15 @@ const panel = id => sheetBody.querySelector(`[data-panel="${id}"]`);
     slider({ label: 'Move up / down', min: -100, max: 100, get: () => Math.round(view.y * 100), set: v => setView({ y: v / 100 }), def: 0 }),
     slider({ label: 'Stretch width', min: VIEW_LIMITS.stretchMin * 100, max: VIEW_LIMITS.stretchMax * 100, get: () => Math.round(view.sx * 100), set: v => setView({ sx: v / 100 }), def: 100 }),
     slider({ label: 'Stretch height', min: VIEW_LIMITS.stretchMin * 100, max: VIEW_LIMITS.stretchMax * 100, get: () => Math.round(view.sy * 100), set: v => setView({ sy: v / 100 }), def: 100 }),
+    toggle({ label: 'Keep frame for next videos', sub: 'zoom and position stay when you open another file', get: () => prefs.keepView, set: v => { prefs.keepView = v; savePrefs(); } }),
     btnRow(
       button('Move & zoom on screen', 'primary', () => { closeSheet(); setAdjusting(true); }),
       button('Reset frame', '', resetFrame)
     ),
+    group('Presets'),
+    presetBox('frame',
+      () => ({ disp: { h: disp.h, fit: disp.fit, aspect: disp.aspect, radius: disp.radius }, view: Object.assign({}, view) }),
+      d => { Object.assign(view, VIEW_DEFAULTS, d.view); setDisp(d.disp); setView({}); }),
     h('p', 'note', 'Anything the video does not cover is filled by the Ambient background. Pinch the display to zoom; in “Move & zoom” mode one finger drags the picture and the bar at the bottom resizes the display.')
   );
 })();
@@ -202,7 +247,8 @@ const ambiGroups = [];
     dirs
   );
   ambiGroups.push({ d: adv, modes: [1] });
-  p.append(adv, btnRow(button('Reset ambient settings', '', () => { Object.assign(amb, AMBI_DEFAULTS, { bg: bgMode() === 2 ? 2 : AMBI_DEFAULTS.bg }); ambiChanged(); syncAll(); })));
+  const ambKeep = () => { const o = Object.assign({}, amb); delete o.bg; return o; };
+  p.append(adv, group('Presets'), presetBox('ambient', ambKeep, d => { Object.assign(amb, d); ambiChanged(); syncAll(); }), btnRow(button('Reset ambient settings', '', () => { Object.assign(amb, AMBI_DEFAULTS, { bg: bgMode() === 2 ? 2 : AMBI_DEFAULTS.bg }); ambiChanged(); syncAll(); })));
 
   syncs.push(() => { const m = bgMode(); ambiGroups.forEach(({ d, modes }) => d.classList.toggle('hidden', !modes.includes(m))); });
 })();

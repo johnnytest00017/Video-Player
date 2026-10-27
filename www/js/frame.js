@@ -28,13 +28,19 @@ export function resetView() { Object.assign(view, VIEW_DEFAULTS); applyLayout();
 export function setDisp(partial, persist = true) {
   Object.assign(disp, partial);
   disp.h = clamp(disp.h, DISP_LIMITS.min, DISP_LIMITS.max);
-  stage.style.setProperty('--display-h', disp.h + '%');
+  disp.radius = clamp(disp.radius, 0, 64);
+  applyDispCss();
   if (persist) saveDisp();
   requestLayout();
   emit('disp');
 }
+function applyDispCss() {
+  stage.style.setProperty('--display-h', disp.h + '%');
+  stage.style.setProperty('--corner', disp.radius + 'px');
+  stage.classList.toggle('round-off', disp.radius < 1);
+}
 export function resetFrame() { Object.assign(view, VIEW_DEFAULTS); setDisp(DISP_DEFAULTS); applyLayout(); emit('view'); }
-stage.style.setProperty('--display-h', disp.h + '%');
+applyDispCss();
 
 /* ---------- badge: tells you the video is zoomed / moved, one tap puts it back ---------- */
 function syncBadge() {

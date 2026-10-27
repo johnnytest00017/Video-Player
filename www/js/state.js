@@ -24,9 +24,11 @@ export const hasCrop = () => crop.t > .001 || crop.r > .001 || crop.b > .001 || 
 
 /* ---- display (the window) — persisted ---- */
 export const DISP_LIMITS = { min: 25, max: 65 };
-export const DISP_DEFAULTS = { h: 45, fit: 'fit', aspect: 'auto' };
+export const DISP_DEFAULTS = { h: 45, fit: 'fit', aspect: 'auto', radius: 28 };
+export const RADIUS_MAX = 64;
 export const disp = loadJSON('avp.display.v1', DISP_DEFAULTS);
 disp.h = clamp(disp.h, DISP_LIMITS.min, DISP_LIMITS.max);
+disp.radius = clamp(disp.radius, 0, 64);
 export const saveDisp = () => saveJSON('avp.display.v1', disp);
 
 /* ---- video transform inside the display — per video, not persisted ----
@@ -37,7 +39,7 @@ export const view = Object.assign({}, VIEW_DEFAULTS);
 export const viewIsDefault = () => Object.keys(VIEW_DEFAULTS).every(k => Math.abs(view[k] - VIEW_DEFAULTS[k]) < .001);
 
 /* ---- player preferences — persisted ---- */
-export const PREF_DEFAULTS = { autoCrop: true, keepAwake: true, loop: false, skip: 10, subScale: 100, subDelay: 0 };
+export const PREF_DEFAULTS = { autoCrop: true, keepAwake: true, loop: false, keepView: false, skip: 10, subScale: 100, subDelay: 0 };
 export const prefs = loadJSON('avp.prefs.v1', PREF_DEFAULTS);
 export const savePrefs = () => saveJSON('avp.prefs.v1', prefs);
 

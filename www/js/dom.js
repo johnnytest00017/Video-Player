@@ -4,6 +4,7 @@ const $ = id => document.getElementById(id);
 export const stage = $('stage');
 export const videoWrap = $('videoWrap');
 export const fgLayer = $('fgLayer');
+export const fgClip = $('fgClip');
 export const video = $('video');
 export const extVideo = $('extVideo');
 export const stretchCv = $('stretchCv');

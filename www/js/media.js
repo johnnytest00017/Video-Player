@@ -1,6 +1,6 @@
 /* Opening the video, subtitles and extended video. */
 import { video, videoFile, srtFile, extFile, prompt, pickVideo, pickSrt, pickExt, addSrt } from './dom.js';
-import { S, crop, view, VIEW_DEFAULTS, emit, on } from './state.js';
+import { S, view, VIEW_DEFAULTS, prefs, emit, on } from './state.js';
 import { parseSRT, setCues, syncAddSrt } from './subtitles.js';
 import { setCrop } from './crop.js';
 import { exitCropEdit } from './crop.js';
@@ -15,7 +15,7 @@ export function openVideo(file) {
   if (videoURL) URL.revokeObjectURL(videoURL);
   videoURL = URL.createObjectURL(file);
   if (S.cropEditing) exitCropEdit();
-  Object.assign(view, VIEW_DEFAULTS);                 // every video starts un-zoomed
+  if (!prefs.keepView) Object.assign(view, VIEW_DEFAULTS);   // new videos start un-zoomed unless “Keep frame” is on
   setCrop({}, '');
   if (S.videoLoaded && S.extLoaded) ext.clear();       // an extended clip belongs to one video
   video.src = videoURL;

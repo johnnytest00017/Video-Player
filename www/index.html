@@ -33,9 +33,10 @@
       </div>
 
       <div class="layer fg-layer" id="fgLayer">
-        <video id="video" playsinline preload="metadata"></video>
+        <div class="fg-clip" id="fgClip"><video id="video" playsinline preload="metadata"></video></div>
       </div>
       <div class="video-vignette"></div>
+      <i class="corner l" aria-hidden="true"></i><i class="corner r" aria-hidden="true"></i>
 
       <!-- touch surface: tap = play, double-tap = seek, pinch = zoom -->
       <div class="gestures" id="gestures"></div>

@@ -7,8 +7,8 @@
    The <video> element itself always sits unscaled in its layer ("contain", bottom aligned). Every placement is a CSS transform
    of that layer, so there is one code path for crop, zoom, move and stretch. Whatever the picture does not cover is filled by the
    ambient background, which listens to the 'layout' event and builds itself from the part of the picture that is visible. */
-import { video, videoWrap, fgLayer } from './dom.js';
-import { S, crop, view, disp, hasCrop, isFull, emit } from './state.js';
+import { video, videoWrap, fgLayer, fgClip } from './dom.js';
+import { S, crop, view, disp, isFull, emit } from './state.js';
 import { clamp } from './util.js';
 
 const ASPECTS = { '16:9': 16 / 9, '4:3': 4 / 3, '21:9': 21 / 9, '1:1': 1 };
@@ -19,10 +19,10 @@ function liftPx() { return isFull() ? 0 : clamp(Math.round(videoWrap.clientHeigh
 
 /* Where the whole video frame is drawn inside its layer (object-fit: contain, bottom aligned). */
 export function fgFrame() {
-  const vw = video.videoWidth, vh = video.videoHeight, ew = video.offsetWidth, eh = video.offsetHeight;
+  const vw = video.videoWidth, vh = video.videoHeight, ew = fgLayer.clientWidth, eh = fgLayer.clientHeight;
   if (!vw || !vh || !ew || !eh) return null;
   const k = Math.min(ew / vw, eh / vh), w = vw * k, h = vh * k;
-  return { x: video.offsetLeft + (ew - w) / 2, y: video.offsetTop + (eh - h), w, h };
+  return { x: (ew - w) / 2, y: eh - h, w, h };
 }
 
 function computeRegion() {
@@ -79,20 +79,20 @@ export function applyLayout() {
   if (raf) { cancelAnimationFrame(raf); raf = 0; }
   const r = computeRegion();
   S.region = r;
+  // the <video> always fills its layer; the crop is a rectangular overflow clip around it
+  const lw = fgLayer.clientWidth, lh = fgLayer.clientHeight;
+  video.style.width = lw + 'px'; video.style.height = lh + 'px';
   if (!r) {
-    fgLayer.style.transform = ''; fgLayer.style.clipPath = '';
+    fgLayer.style.transform = '';
+    Object.assign(fgClip.style, { left: '0px', top: '0px', width: '100%', height: '100%' });
+    video.style.left = '0px'; video.style.top = '0px';
     emit('layout', null);
     return;
   }
-  const cropped = !S.cropEditing && hasCrop();
-  const identity = !cropped && Math.abs(r.sX - 1) < .002 && Math.abs(r.sY - 1) < .002 &&
-    Math.abs(r.dx - r.x0) < .5 && Math.abs(r.dy - r.y0) < .5;
-  if (identity) {
-    fgLayer.style.transform = ''; fgLayer.style.clipPath = '';
-  } else {
-    // whole-pixel translation: the picture is never resampled onto half pixels
-    fgLayer.style.transform = `translate(${Math.round(r.dx - r.sX * r.x0)}px, ${Math.round(r.dy - r.sY * r.y0)}px) scale(${r.sX}, ${r.sY})`;
-    fgLayer.style.clipPath = `inset(${r.y0}px ${r.W - r.x1}px ${r.Hc - r.y1}px ${r.x0}px)`;
-  }
+  Object.assign(fgClip.style, { left: r.x0 + 'px', top: r.y0 + 'px', width: (r.x1 - r.x0) + 'px', height: (r.y1 - r.y0) + 'px' });
+  video.style.left = -r.x0 + 'px'; video.style.top = -r.y0 + 'px';
+  const identity = Math.abs(r.sX - 1) < .002 && Math.abs(r.sY - 1) < .002 && Math.abs(r.dx - r.x0) < .5 && Math.abs(r.dy - r.y0) < .5;
+  // whole-pixel translation: the picture is never resampled onto half pixels
+  fgLayer.style.transform = identity ? '' : `translate(${Math.round(r.dx - r.sX * r.x0)}px, ${Math.round(r.dy - r.sY * r.y0)}px) scale(${r.sX}, ${r.sY})`;
   emit('layout', r);
 }
