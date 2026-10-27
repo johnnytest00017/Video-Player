@@ -105,20 +105,12 @@
       <button class="chip hidden" id="addSrt" type="button">＋ Add subtitles (SRT)</button>
     </section>
 
-    <!-- ===== Controls ===== -->
+    <!-- ===== Controls: a little game pad. D-pad = skip + speed, reel = play / pause, round keys = player buttons ===== -->
     <section class="controls" id="controls" aria-label="Playback controls">
+      <i class="skin" id="skin" aria-hidden="true"></i>
+
       <div class="utility-row">
         <button class="chip hidden" id="viewBadge" type="button" title="Reset zoom and position"></button>
-        <span class="spacer"></span>
-        <button class="icon-btn" id="adjustToggle" type="button" aria-pressed="false" aria-label="Move and zoom video" title="Move &amp; zoom video">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M12 3 9 6M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg>
-        </button>
-        <button class="icon-btn" id="settingsToggle" type="button" aria-expanded="false" aria-label="Settings" title="Settings">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
-        </button>
-        <button class="icon-btn" id="fsToggle" type="button" aria-label="Fullscreen" title="Fullscreen">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path id="fsPath" d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/></svg>
-        </button>
       </div>
 
       <div class="seek-row">
@@ -128,13 +120,45 @@
       </div>
 
       <div class="transport">
-        <button class="skip" id="backward" type="button" aria-label="Back 10 seconds">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 6 4 12l7 6zM20 6l-7 6 7 6z" fill="currentColor" stroke="none"/></svg><span id="backLabel">10</span>
+        <!-- D-pad: left / right skip, up / down change the speed -->
+        <div class="pad dpad" role="group" aria-label="Skip and speed">
+          <button class="pad-btn dp up" id="speedUp" type="button" aria-label="Faster" title="Faster"><svg class="tri" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.2 17.2 16H6.8z"/></svg></button>
+          <button class="pad-btn dp left" id="backward" type="button" aria-label="Back 10 seconds" title="Back (hold to keep going)"><svg class="tri" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.2 17.2 16H6.8z"/></svg><span id="backLabel">10</span></button>
+          <span class="dp-core" id="speedLabel" aria-live="polite">1×</span>
+          <button class="pad-btn dp right" id="forward" type="button" aria-label="Forward 10 seconds" title="Forward (hold to keep going)"><svg class="tri" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.2 17.2 16H6.8z"/></svg><span id="fwdLabel">10</span></button>
+          <button class="pad-btn dp down" id="speedDown" type="button" aria-label="Slower" title="Slower"><svg class="tri" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.2 17.2 16H6.8z"/></svg></button>
+        </div>
+
+        <!-- reel: play / pause. The ring turns while the video plays -->
+        <button class="reel-btn" id="playPause" type="button" aria-label="Play video">
+          <svg class="reel" viewBox="-50 -50 100 100" aria-hidden="true">
+            <g class="reel-ring">
+              <path d="M35.28 -17.09A39.2 39.2 0 0 1 35.28 17.09L22.32 10.81A24.8 24.8 0 0 0 22.32 -10.81Z" transform="rotate(90)"/>
+              <path d="M35.28 -17.09A39.2 39.2 0 0 1 35.28 17.09L22.32 10.81A24.8 24.8 0 0 0 22.32 -10.81Z" transform="rotate(210)"/>
+              <path d="M35.28 -17.09A39.2 39.2 0 0 1 35.28 17.09L22.32 10.81A24.8 24.8 0 0 0 22.32 -10.81Z" transform="rotate(330)"/>
+            </g>
+            <circle class="hub" r="15"/>
+            <g class="ticks"><path d="M10.2 0H12.4M-5.1 8.83L-6.2 10.74M-5.1 -8.83L-6.2 -10.74"/></g>
+            <path class="g-play" d="M-3.9 -5.4L5.4 0L-3.9 5.4Z"/>
+            <g class="g-pause"><rect x="-5.2" y="-6" width="3.6" height="12" rx="1.5"/><rect x="1.6" y="-6" width="3.6" height="12" rx="1.5"/></g>
+          </svg>
         </button>
-        <button class="center-play" id="playPause" type="button" aria-label="Play video"></button>
-        <button class="skip" id="forward" type="button" aria-label="Forward 10 seconds">
-          <span id="fwdLabel">10</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m13 6 7 6-7 6zM4 6l7 6-7 6z" fill="currentColor" stroke="none"/></svg>
-        </button>
+
+        <!-- round keys -->
+        <div class="pad faces" role="group" aria-label="Player buttons">
+          <button class="pad-btn face n" id="settingsToggle" type="button" aria-expanded="false" aria-label="Settings" title="Settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
+          </button>
+          <button class="pad-btn face w" id="adjustToggle" type="button" aria-pressed="false" aria-label="Move and zoom video" title="Move &amp; zoom video">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M12 3 9 6M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg>
+          </button>
+          <button class="pad-btn face e" id="fsToggle" type="button" aria-label="Fullscreen" title="Fullscreen">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path id="fsPath" d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/></svg>
+          </button>
+          <button class="pad-btn face s" id="loopToggle" type="button" aria-pressed="false" aria-label="Loop video" title="Loop">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 2.5 20.5 6 17 9.5M3.5 11V9.5A3.5 3.5 0 0 1 7 6h13.5M7 21.5 3.5 18 7 14.5M20.5 13v1.5A3.5 3.5 0 0 1 17 18H3.5"/></svg>
+          </button>
+        </div>
       </div>
     </section>
 
@@ -148,6 +172,7 @@
           <button role="tab" type="button" data-tab="bottom" aria-selected="false">Bottom</button>
           <button role="tab" type="button" data-tab="presets" aria-selected="false">Presets</button>
           <button role="tab" type="button" data-tab="playback" aria-selected="false">Playback</button>
+          <button role="tab" type="button" data-tab="look" aria-selected="false">Look</button>
           <button role="tab" type="button" data-tab="media" aria-selected="false">Media</button>
         </nav>
         <button class="icon-btn small" id="sheetClose" type="button" aria-label="Close settings">
@@ -160,6 +185,7 @@
         <section class="panel hidden" data-panel="bottom" role="tabpanel"></section>
         <section class="panel hidden" data-panel="presets" role="tabpanel"></section>
         <section class="panel hidden" data-panel="playback" role="tabpanel"></section>
+        <section class="panel hidden" data-panel="look" role="tabpanel"></section>
         <section class="panel hidden" data-panel="media" role="tabpanel"></section>
       </div>
     </aside>
@@ -167,6 +193,7 @@
     <input id="videoFile" type="file" accept="video/*">
     <input id="srtFile" type="file" accept=".srt,application/x-subrip,text/plain">
     <input id="extFile" type="file" accept="video/*">
+    <input id="skinFile" type="file" accept="image/*">
   </section>
 </main>
 <script type="module" src="js/main.js"></script>

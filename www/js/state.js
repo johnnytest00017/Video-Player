@@ -43,6 +43,12 @@ export const PREF_DEFAULTS = { autoCrop: true, keepAwake: true, loop: false, kee
 export const prefs = loadJSON('avp.prefs.v1', PREF_DEFAULTS);
 export const savePrefs = () => saveJSON('avp.prefs.v1', prefs);
 
+/* ---- look & feel — persisted. accent / shell are #rrggbb. skin: none | circuit | image (the picture itself lives in its own storage key, see look.js).
+   haptics: 0 off · 1 soft · 2 normal · 3 strong ---- */
+export const LOOK_DEFAULTS = { accent: '#f6d63b', shell: '#2b2b2b', reelAccent: 0, skin: 'none', skinOp: 55, skinBlur: 0, haptics: 2 };
+export const look = loadJSON('avp.look.v1', LOOK_DEFAULTS);
+export const saveLook = () => saveJSON('avp.look.v1', look);
+
 /* ---- ambient settings — persisted. v2 key: v1 values are imported once (smooth motion is switched off: it redraws every screen frame). ---- */
 export const AMBI_KEY = 'ambilightSettings.v2';
 export const AMBI_DEFAULTS = {

@@ -15,9 +15,12 @@
   --accent-ink: #1a1606;
   --white: #f3f3f0;           /* white highlight card */
   --white-ink: #161616;
+  --shell: #2b2b2b;           /* the controls card (Settings → Look) */
+  --reel-face: var(--white);
   --radius: 24px;
   --font: "Google Sans", "Product Sans", "Avenir Next", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --ease: cubic-bezier(.2, .8, .2, 1);
+  --spring: cubic-bezier(.34, 1.56, .64, 1);   /* a little overshoot when a key springs back */
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -74,14 +77,14 @@ input[type=range].range {
 }
 input[type=range]::-webkit-slider-runnable-track {
   height: 4px; border-radius: 4px;
-  background: linear-gradient(to right, var(--text-2) 0 var(--p), #34343c var(--p) 100%);
+  background: linear-gradient(to right, var(--accent) 0 var(--p), rgba(255,255,255,.14) var(--p) 100%);
 }
 input[type=range]::-webkit-slider-thumb {
   -webkit-appearance: none; appearance: none; width: 18px; height: 18px; margin-top: -7px;
   border-radius: 50%; background: #fff; border: 0; box-shadow: 0 1px 6px rgba(0,0,0,.6);
 }
-input[type=range]::-moz-range-track { height: 4px; border-radius: 4px; background: #34343c; }
-input[type=range]::-moz-range-progress { height: 4px; border-radius: 4px; background: var(--text-2); }
+input[type=range]::-moz-range-track { height: 4px; border-radius: 4px; background: rgba(255,255,255,.14); }
+input[type=range]::-moz-range-progress { height: 4px; border-radius: 4px; background: var(--accent); }
 input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border: 0; border-radius: 50%; background: #fff; }
 input[type=range]:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
 /* seek bar only: the settings sliders use the .lv level rows (sheet.css) */
@@ -91,3 +94,11 @@ input[type=range].lv-input::-webkit-slider-thumb { width: 1px; height: 100%; mar
 input[type=range].lv-input::-moz-range-track { height: 100%; background: none; }
 input[type=range].lv-input::-moz-range-progress { background: none; }
 input[type=range].lv-input::-moz-range-thumb { width: 1px; height: 100%; background: none; border: 0; border-radius: 0; }
+
+/* ---------- press feel: every button sinks when touched and springs back with a small overshoot ---------- */
+.btn, .chip, .pill, .seg button, .tabs button, .preset-use, .icon-btn, .home-card, .lv-val, .lv-reset, details.more > summary {
+  transition: transform .26s var(--spring), background .18s, border-color .18s, color .18s, box-shadow .2s;
+}
+.btn:active, .chip:active, .pill:active, .seg button:active, .tabs button:active, .preset-use:active, .icon-btn:active, .home-card:active, details.more > summary:active {
+  transform: scale(.95); transition-duration: .05s, .12s, .12s, .12s, .12s;
+}

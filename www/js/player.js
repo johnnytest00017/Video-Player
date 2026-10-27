@@ -9,10 +9,10 @@ import { applyLayout } from './layout.js';
 import { tick } from './background.js';
 import { updateSubtitle } from './subtitles.js';
 import { openLayer, closeLayer, closeTop } from './ui.js';
+import { haptic } from './haptics.js';
 import { setImmersive, keepAwake } from './native.js';
 
 const ICON_PLAY = '<svg viewBox="0 0 24 28" aria-hidden="true"><path d="M3 2.5Q3 0 5.3 1.4L22 12.2Q24 13.5 22 14.8L5.3 26.6Q3 28 3 25.5Z" fill="currentColor"/></svg>';
-const ICON_PAUSE = '<svg viewBox="0 0 24 28" aria-hidden="true"><rect x="4" y="2" width="5.5" height="24" rx="1.8" fill="currentColor"/><rect x="14.5" y="2" width="5.5" height="24" rx="1.8" fill="currentColor"/></svg>';
 const ICON_ENTER = 'M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4';
 const ICON_EXIT = 'M9 4v4a1 1 0 0 1-1 1H4M20 9h-4a1 1 0 0 1-1-1V4M15 20v-4a1 1 0 0 1 1-1h4M4 15h4a1 1 0 0 1 1 1v4';
 
@@ -23,7 +23,7 @@ export async function togglePlay() {
 }
 function syncPlayIcon() {
   const playing = !video.paused && !video.ended;
-  playPause.innerHTML = playing ? ICON_PAUSE : ICON_PLAY;
+  playPause.classList.toggle('playing', playing);       // the reel turns and shows the pause bars (css)
   bigPlay.innerHTML = ICON_PLAY;
   playPause.setAttribute('aria-label', playing ? 'Pause video' : 'Play video');
   bigPlay.classList.toggle('visible', !playing && S.videoLoaded);
@@ -42,9 +42,7 @@ export function skipBy(sec) {
   const d = Number.isFinite(video.duration) ? video.duration : Infinity;
   video.currentTime = clamp(video.currentTime + sec, 0, d);
 }
-backward.addEventListener('click', () => { skipBy(-prefs.skip); pulse(backward); });
-forward.addEventListener('click', () => { skipBy(prefs.skip); pulse(forward); });
-const pulse = el => { el.animate([{ transform: 'scale(1)' }, { transform: 'scale(.88)' }, { transform: 'scale(1)' }], { duration: 160 }); };
+/* the skip keys live in pad.js (they repeat while held) */
 
 export function syncSkipLabels() {
   backLabel.textContent = fwdLabel.textContent = String(prefs.skip);
@@ -54,8 +52,12 @@ export function syncSkipLabels() {
 
 let seeking = false;
 const paintSeek = () => { seek.style.setProperty('--p', (seek.value / seek.max * 100) + '%'); };
+let seekNotch = -1;
+seek.addEventListener('pointerdown', () => { haptic.grab(); seekNotch = Math.floor(seek.value / 50); });
 seek.addEventListener('input', () => {
   seeking = true; paintSeek();
+  const n = Math.floor(seek.value / 50);
+  if (n !== seekNotch) { seekNotch = n; if (seek.value <= 0 || seek.value >= 1000) haptic.thud(); else haptic.tick(); }
   if (Number.isFinite(video.duration) && video.duration > 0) video.currentTime = (Number(seek.value) / 1000) * video.duration;
 });
 ['change', 'pointerup', 'pointercancel', 'blur'].forEach(ev => seek.addEventListener(ev, () => { seeking = false; }));

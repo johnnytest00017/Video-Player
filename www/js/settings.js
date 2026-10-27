@@ -3,7 +3,7 @@
 import { sheet, tabs, sheetBody, sheetClose, settingsToggle, video } from './dom.js';
 import {
   S, view, disp, prefs, amb, modes, mir, crop, AMBI_DEFAULTS, MIR_DEFAULTS, pickMir, MODES_DEFAULTS, VIEW_DEFAULTS, VIEW_LIMITS,
-  DISP_LIMITS, DISP_DEFAULTS, PREF_DEFAULTS, RADIUS_MAX, bgMode, savePrefs, on, emit
+  DISP_LIMITS, DISP_DEFAULTS, PREF_DEFAULTS, RADIUS_MAX, LOOK_DEFAULTS, look, bgMode, savePrefs, on, emit
 } from './state.js';
 import { APP_NAME, APP_VERSION } from './config.js';
 import { openLayer, closeLayer } from './ui.js';
@@ -15,6 +15,9 @@ import { setSpeed, syncSkipLabels } from './player.js';
 import { applySubStyle } from './subtitles.js';
 import { pickVideoFile, pickSrtFile, pickExtFile, removeSrt } from './media.js';
 import * as ext from './extended.js';
+import { haptic, hapticDemo } from './haptics.js';
+import { setLook, loadSkinFile, clearSkinImage, hasSkinImage } from './look.js';
+import { skinFile } from './dom.js';
 
 /* ---------- tiny DOM helpers ---------- */
 const h = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -26,7 +29,10 @@ const RESET_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 
 const decimals = step => { const t = String(step); return t.includes('.') ? t.split('.')[1].length : 0; };
 
 /* A "level" row: label inside, the part up to the value is filled, a grip marks the end, dots mark the levels.
-   The real <input type=range> lies invisibly over the whole row, so touch / drag / keyboard behave natively.
+   Only a deliberate sideways DRAG moves the value. A tap does nothing, and so does a finger that lands on the row to scroll the
+   sheet (the browser takes the touch over and we get a pointercancel). The drag is relative to where it started, so the value
+   never jumps under the finger. While dragging you feel a notch every 5 %, and a firmer thud at the default value and at both ends.
+   The real <input type=range> stays inside the row (invisible, no pointer events) for the keyboard and screen readers.
    Tap the number to type an exact value; the ↺ button appears when the value differs from its default. */
 function slider({ label, sub, min, max, step = 1, get, set, fmt = v => v + '%', def }) {
   const wrap = h('div', 'lvwrap'), row = h('div', 'lv');
@@ -35,21 +41,56 @@ function slider({ label, sub, min, max, step = 1, get, set, fmt = v => v + '%', 
   const rst = h('button', 'lv-reset'); rst.type = 'button'; rst.title = 'Reset'; rst.setAttribute('aria-label', 'Reset ' + label); rst.innerHTML = RESET_SVG;
   const input = Object.assign(document.createElement('input'), { type: 'range', min, max, step });
   input.className = 'lv-input'; input.setAttribute('aria-label', label);
-  row.append(h('i', 'lv-fill'), h('i', 'lv-ticks'), h('i', 'lv-grip'), name, rst, val, input);
+  const grip = h('i', 'lv-grip');
+  row.append(h('i', 'lv-fill'), h('i', 'lv-ticks'), grip, name, rst, val, input);
   wrap.append(row);
   if (sub) wrap.append(h('div', 'hint', sub));
 
   const meas = () => { if (name.offsetWidth) row.style.setProperty('--gmin', (name.offsetWidth + 26) + 'px'); };
   if (window.ResizeObserver) new ResizeObserver(meas).observe(row); else row.addEventListener('pointerdown', meas);
-  const dec = decimals(step), snap = v => +(Math.round(clamp(v, min, max) / step) * step).toFixed(dec);
+  const dec = decimals(step), range = max - min, snap = v => +(Math.round(clamp(v, min, max) / step) * step).toFixed(dec);
   const paint = () => {
     const v = get();
     input.value = v; val.textContent = fmt(v);
     row.style.setProperty('--p', ((v - min) / (max - min) * 100) + '%');
     rst.hidden = def == null || Math.abs(v - def) < step / 2;
   };
-  input.addEventListener('input', () => { set(+input.value); paint(); });
-  rst.addEventListener('click', () => { set(def); paint(); });
+  input.addEventListener('input', () => { set(+input.value); paint(); });       // keyboard / screen reader
+  rst.addEventListener('click', () => { set(def); paint(); haptic.thud(); });
+
+  /* ---- drag ---- */
+  const zone = Math.max(step * 1.5, range * .015);   // the default value pulls a little, so a quick drag cannot skip over it
+  let st = null;
+  const bump = () => { try { grip.animate([{ transform: 'scaleY(1)' }, { transform: 'scaleY(1.7)' }, { transform: 'scaleY(1)' }], { duration: 110 }); } catch (e) { /* ignore */ } };
+  const end = () => { if (!st) return; const was = st.drag; st = null; if (was) { row.classList.remove('active'); haptic.release(); } };
+  row.addEventListener('pointerdown', e => {
+    if ((e.pointerType === 'mouse' && e.button) || e.target.closest('.lv-val, .lv-reset, .lv-edit')) return;
+    st = { id: e.pointerId, x: e.clientX, y: e.clientY, v0: get(), last: get(), w: Math.max(row.clientWidth, 160), drag: false, notch: -1, mouse: e.pointerType === 'mouse' };
+  });
+  row.addEventListener('pointermove', e => {
+    if (!st || e.pointerId !== st.id) return;
+    const dx = e.clientX - st.x, dy = e.clientY - st.y, adx = Math.abs(dx), ady = Math.abs(dy);
+    if (!st.drag) {
+      if (ady >= 10 && ady > adx * .6) { st = null; return; }                        // that is a scroll: leave it to the sheet
+      if (adx < (st.mouse ? 3 : 10) || adx < ady * 1.6) return;                       // not clearly sideways yet
+      st.drag = true; st.x = e.clientX; st.v0 = get();                                // start from where the drag was recognised: no jump
+      try { row.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      row.classList.add('active'); haptic.grab();
+      return;
+    }
+    let v = snap(st.v0 + (e.clientX - st.x) / st.w * range);
+    if (def != null) {
+      const d = snap(def);
+      if (Math.abs(v - d) < zone || (st.last - d) * (v - d) < 0) v = d;           // near it, or flicked straight across it: stop on the default
+    }
+    if (v === st.last) return;
+    st.last = v; set(v); paint(); bump();
+    if (def != null && v === snap(def)) haptic.thud();
+    else if (v <= min || v >= max) haptic.thud();
+    else { const n = Math.floor((v - min) / (range / 20)); if (n !== st.notch) { st.notch = n; haptic.tick(); } }
+  });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => row.addEventListener(ev, e => { if (st && e.pointerId === st.id) end(); }));
+
   val.addEventListener('click', () => {
     const ed = Object.assign(document.createElement('input'), { type: 'number', className: 'lv-edit', value: get() });
     ed.inputMode = 'decimal'; ed.step = step; ed.min = min; ed.max = max;
@@ -93,6 +134,31 @@ function toggle({ label, sub, get, set }) {
   sw.addEventListener('click', () => { set(!get()); paint(); });
   row.append(left, sw); syncs.push(paint);
   return row;
+}
+
+/* A row of round colour swatches + a "pick any colour" swatch. */
+function swatches({ label, colors, get, set }) {
+  const f = h('div', 'field');
+  f.append(h('div', 'field-name', label));
+  const row = h('div', 'swatches'); row.setAttribute('role', 'radiogroup'); row.setAttribute('aria-label', label);
+  const btns = colors.map(([hex, name]) => {
+    const b = h('button', 'swatch'); b.type = 'button'; b.setAttribute('role', 'radio'); b.title = name; b.setAttribute('aria-label', name);
+    b.style.setProperty('--c', hex); b.addEventListener('click', () => { set(hex); syncAll(); });
+    row.append(b); return [hex, b];
+  });
+  const any = h('label', 'swatch any'); any.title = 'Pick any colour';
+  const pick = Object.assign(document.createElement('input'), { type: 'color' });
+  pick.setAttribute('aria-label', label + ': any colour');
+  pick.addEventListener('input', () => { set(pick.value); syncAll(); });
+  any.append(pick); row.append(any);
+  f.append(row);
+  syncs.push(() => {
+    const cur = String(get()).toLowerCase();
+    btns.forEach(([hex, b]) => b.setAttribute('aria-checked', String(hex === cur)));
+    const custom = !colors.some(([hex]) => hex === cur);
+    any.classList.toggle('on', custom); any.style.setProperty('--c', cur); pick.value = cur;
+  });
+  return f;
 }
 
 function button(text, cls, onClick) {
@@ -266,7 +332,7 @@ function applySnapshot(d) {
   const keepBg = amb.bg;
   Object.assign(amb, AMBI_DEFAULTS, d.amb || {}); amb.bg = keepBg;
   Object.assign(prefs, { skip: PREF_DEFAULTS.skip, subScale: PREF_DEFAULTS.subScale, loop: PREF_DEFAULTS.loop }, d.prefs || {});
-  savePrefs(); syncSkipLabels(); applySubStyle();
+  savePrefs(); syncSkipLabels(); applySubStyle(); emit('loop');
   setView({});
   ambiChanged(); syncAll();
 }
@@ -346,12 +412,51 @@ const writeList = list => { store.list = JSON.stringify(list); saveJSON(PRESET_K
   p.append(
     group('Playback'), sp,
     segmented({ label: 'Skip interval', options: [[5, '5 s'], [10, '10 s'], [15, '15 s'], [30, '30 s']], get: () => prefs.skip, set: v => { prefs.skip = v; savePrefs(); syncSkipLabels(); } }),
-    toggle({ label: 'Loop video', get: () => prefs.loop, set: v => { prefs.loop = v; savePrefs(); } }),
+    toggle({ label: 'Loop video', get: () => prefs.loop, set: v => { prefs.loop = v; savePrefs(); emit('loop'); } }),
     toggle({ label: 'Keep screen on', sub: 'while playing', get: () => prefs.keepAwake, set: v => { prefs.keepAwake = v; savePrefs(); emit('keep-awake'); } }),
     group('Subtitles'),
     slider({ label: 'Size', min: 70, max: 160, get: () => prefs.subScale, set: v => { prefs.subScale = v; savePrefs(); applySubStyle(); }, def: 100 }),
     slider({ label: 'Delay', sub: 'positive = subtitles appear later', min: -10, max: 10, step: .1, get: () => prefs.subDelay, set: v => { prefs.subDelay = Math.round(v * 10) / 10; savePrefs(); applySubStyle(); }, fmt: v => (v > 0 ? '+' : '') + v.toFixed(1) + ' s', def: 0 })
   );
+})();
+
+/* ============ LOOK — colours, the picture behind the controls, haptics ============ */
+(() => {
+  const p = panel('look');
+  const ACCENTS = [['#f6d63b', 'Yellow'], ['#ff8a5c', 'Orange'], ['#ff6b8b', 'Pink'], ['#b58cff', 'Violet'], ['#6cb8ff', 'Blue'], ['#5ee0b0', 'Mint'], ['#f3f3f0', 'White']];
+  const SHELLS = [['#2b2b2b', 'Charcoal'], ['#111111', 'Black'], ['#1f2a3a', 'Midnight'], ['#2c2230', 'Plum'], ['#1f3029', 'Forest'], ['#33271f', 'Cocoa']];
+  const imgRow = btnRow(
+    button('Choose picture', 'primary', () => skinFile.click()),
+    button('Remove', 'danger', () => clearSkinImage())
+  );
+  showWhen(imgRow, () => look.skin === 'image' || hasSkinImage());
+  const pic = h('div');
+  pic.append(
+    slider({ label: 'Picture strength', min: 0, max: 100, get: () => look.skinOp, set: v => setLook({ skinOp: v }), def: LOOK_DEFAULTS.skinOp }),
+    slider({ label: 'Picture blur', min: 0, max: 20, get: () => look.skinBlur, set: v => setLook({ skinBlur: v }), fmt: v => v === 0 ? 'Off' : v + ' px', def: LOOK_DEFAULTS.skinBlur })
+  );
+  showWhen(pic, () => look.skin !== 'none');
+
+  p.append(
+    group('Colours'),
+    swatches({ label: 'Accent', colors: ACCENTS, get: () => look.accent, set: v => setLook({ accent: v }) }),
+    swatches({ label: 'Controls shell', colors: SHELLS, get: () => look.shell, set: v => setLook({ shell: v }) }),
+    toggle({ label: 'Coloured play button', sub: 'the reel uses the accent colour', get: () => look.reelAccent, set: v => setLook({ reelAccent: v ? 1 : 0 }) }),
+
+    group('Picture behind the controls'),
+    segmented({ label: 'Skin', options: [['none', 'Plain'], ['circuit', 'Circuit'], ['image', 'My picture']],
+      get: () => look.skin, set: v => { if (v === 'image' && !hasSkinImage()) { skinFile.click(); return; } setLook({ skin: v }); syncAll(); } }),
+    imgRow, pic,
+    note('Your picture is shrunk and kept inside the app. Lower the strength if the controls get hard to read.'),
+
+    group('Feel'),
+    segmented({ label: 'Haptics', options: [[0, 'Off'], [1, 'Soft'], [2, 'Normal'], [3, 'Strong']], get: () => look.haptics, set: v => { setLook({ haptics: v }); haptic.thud(); } }),
+    btnRow(button('Test vibration', '', hapticDemo)),
+    note('Sliders tick every 5 % while you drag, and thud at the default value and at both ends. The pad keys click the moment they go down. If you feel nothing, the app needs the Android vibrate permission (see the release notes).'),
+
+    btnRow(button('Reset look', 'danger', () => { setLook(Object.assign({}, LOOK_DEFAULTS)); syncAll(); }))
+  );
+  skinFile.addEventListener('change', async () => { await loadSkinFile(skinFile.files && skinFile.files[0]); skinFile.value = ''; syncAll(); });
 })();
 
 /* ============ MEDIA ============ */

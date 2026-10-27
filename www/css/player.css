@@ -5,7 +5,7 @@
   --display-h: 45%;
   --corner: 28px;
   /* the display may never squeeze subtitles + controls out of the screen */
-  --dh: min(var(--display-h), calc(100% - 300px));
+  --dh: min(var(--display-h), calc(100% - 330px));
   position: relative; isolation: isolate; width: 100%;
   height: 100vh; height: 100dvh; min-height: 480px;
   display: flex; flex-direction: column; background: var(--bg); overflow: hidden; overflow: clip;
@@ -118,45 +118,129 @@
 }
 .text-section .chip { margin-top: 6px; }
 .stage.full .text-section {
-  position: absolute; left: 5%; right: 5%; bottom: calc(190px + env(safe-area-inset-bottom, 0px));
+  position: absolute; left: 5%; right: 5%; bottom: calc(210px + env(safe-area-inset-bottom, 0px));
   flex: none; overflow: visible; transition: bottom .3s var(--ease);
 }
 .stage.full.ui-hidden .text-section { bottom: calc(44px + env(safe-area-inset-bottom, 0px)); }
 
-/* ---------- controls ---------- */
+/* ---------- controls: a little game pad ----------
+   left: D-pad (skip + speed)   middle: the reel (play / pause)   right: four round keys (settings, move & zoom, fullscreen, loop) */
 .controls {
+  --pad: clamp(86px, 27vw, 104px);              /* diameter of the two round housings */
+  --reel: calc(var(--pad) * .86);
   position: relative; z-index: 4; flex: 0 0 auto; padding: 0 6% 40px;
   transition: opacity .28s, transform .28s var(--ease);
 }
 .stage:not(.full) .controls {
-  margin: 0 12px calc(12px + env(safe-area-inset-bottom, 0px)); padding: 8px 18px 14px; background: var(--surface-2); border-radius: 30px;
+  margin: 0 12px calc(12px + env(safe-area-inset-bottom, 0px)); padding: 10px 18px 18px; background: var(--shell); border-radius: 32px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), inset 0 0 0 1px rgba(255,255,255,.04);
+  isolation: isolate; overflow: hidden;
 }
-.stage.full .controls { position: absolute; left: 0; right: 0; bottom: 0; padding-bottom: calc(34px + env(safe-area-inset-bottom, 0px)); }
+.stage.full .controls { position: absolute; left: 0; right: 0; bottom: 0; --pad: 88px; padding-bottom: calc(30px + env(safe-area-inset-bottom, 0px)); }
 .stage.full.ui-hidden .controls { opacity: 0; transform: translateY(14px); pointer-events: none; }
+.controls > :not(.skin) { position: relative; z-index: 1; }
 
-.utility-row { display: flex; align-items: center; gap: 2px; margin: 0 0 4px; min-height: 40px; }
-.seek-row { display: flex; align-items: center; gap: 12px; }
+/* the picture / circuit behind the controls (Settings → Look) */
+.skin { position: absolute; inset: 0; z-index: 0; pointer-events: none; display: none; background-position: center; background-repeat: no-repeat; }
+.stage:not(.full) .skin.circuit { display: block; background-size: 120px 120px; background-repeat: repeat; }
+.stage:not(.full) .skin.image { display: block; background-size: cover; inset: -16px; }
+.stage:not(.full) .skin.image::after { content: none; }
+
+.utility-row { display: flex; align-items: center; gap: 2px; margin: 0 0 4px; min-height: 34px; }
+.utility-row:not(:has(.chip:not(.hidden))) { display: none; }
+.seek-row { display: flex; align-items: center; gap: 12px; margin-top: 2px; }
 .time { color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; min-width: 34px; }
 .time:last-child { text-align: right; }
-.transport { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-top: 10px; }
-.skip {
-  display: inline-flex; align-items: center; gap: 6px; color: var(--muted); background: transparent; border: 0;
-  font-size: 13px; padding: 10px 0; cursor: pointer; font-variant-numeric: tabular-nums; transition: color .15s;
+.transport { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 6px; margin-top: 12px; }
+
+/* round, recessed housings */
+.pad {
+  position: relative; width: var(--pad); height: var(--pad); border-radius: 50%;
+  background: rgba(0,0,0,.32);
+  box-shadow: inset 0 3px 9px rgba(0,0,0,.6), inset 0 -1px 0 rgba(255,255,255,.06), 0 1px 0 rgba(255,255,255,.07);
 }
-.skip svg { width: 22px; height: 22px; }
-.skip:first-child { justify-self: start; }
-.skip:last-child { justify-self: end; }
-.skip:hover, .skip:active { color: var(--text); }
-.center-play {
-  border: 0; background: var(--accent); color: var(--accent-ink); width: 72px; height: 56px;
-  display: flex; justify-content: center; align-items: center; cursor: pointer; border-radius: 28px;
+.stage.full .pad { background: rgba(0,0,0,.52); }
+.pad-btn, .reel-btn { appearance: none; border: 0; padding: 0; margin: 0; cursor: pointer; touch-action: manipulation; -webkit-touch-callout: none; }
+
+/* D-pad: a plus made of four keys. Hit areas reach a little outward so a thumb never misses. */
+.dpad { justify-self: start; display: grid; grid-template: 1fr 1fr 1fr / 1fr 1fr 1fr; padding: calc(var(--pad) * .08); }   /* not %: a % padding would follow the wide grid column, not the pad */
+.dp {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #92928e;
+  background: linear-gradient(#353535, #212121);
+  box-shadow: 0 2px 0 #000, inset 0 1px 0 rgba(255,255,255,.1);
+  transition: transform .22s var(--spring), box-shadow .22s, background .2s, color .15s;
 }
-.center-play:active { transform: scale(.95); }
-.center-play svg { width: 22px; height: 26px; }
+.dp::after { content: ''; position: absolute; inset: 0; }
+.dp.up { grid-area: 1 / 2; border-radius: 10px 10px 2px 2px; }
+.dp.up::after { top: -7px; }
+.dp.down { grid-area: 3 / 2; border-radius: 2px 2px 10px 10px; }
+.dp.down::after { bottom: -7px; }
+.dp.left { grid-area: 2 / 1; border-radius: 10px 2px 2px 10px; }
+.dp.left::after { left: -7px; }
+.dp.right { grid-area: 2 / 3; border-radius: 2px 10px 10px 2px; }
+.dp.right::after { right: -7px; }
+.dp-core {
+  grid-area: 2 / 2; display: grid; place-items: center; background: linear-gradient(#262626, #1c1c1c); color: #75756f;
+  font-size: 9px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; pointer-events: none; transition: color .2s;
+}
+.dp-core.off { color: var(--accent); }
+.tri { width: 12px; height: 12px; fill: currentColor; stroke: currentColor; stroke-width: 2.6; stroke-linejoin: round; pointer-events: none; }
+.dp.left .tri { transform: rotate(-90deg); }
+.dp.right .tri { transform: rotate(90deg); }
+.dp.down .tri { transform: rotate(180deg); }
+.dp span { font-size: 8.5px; font-weight: 700; line-height: 1; margin-top: 1px; font-variant-numeric: tabular-nums; pointer-events: none; }
+.dp:active { transform: translateY(2px); color: var(--accent); background: linear-gradient(#232323, #1a1a1a); box-shadow: 0 0 0 #000, inset 0 2px 5px rgba(0,0,0,.65); transition-duration: .04s; }
+
+/* the reel: a big white disc, three black segments that turn while the video plays, a hub with the play / pause mark */
+.reel-btn {
+  position: relative; width: var(--reel); height: var(--reel); border-radius: 50%;
+  background: radial-gradient(circle at 36% 24%, rgba(255,255,255,.55), rgba(255,255,255,0) 55%), var(--reel-face);
+  box-shadow: 0 5px 0 rgba(0,0,0,.5), 0 10px 18px rgba(0,0,0,.45), inset 0 -4px 9px rgba(0,0,0,.16), inset 0 2px 0 rgba(255,255,255,.75);
+  transition: transform .26s var(--spring), box-shadow .26s;
+}
+.reel-btn:active {
+  transform: translateY(4px) scale(.965); transition-duration: .05s;
+  box-shadow: 0 1px 0 rgba(0,0,0,.5), 0 3px 7px rgba(0,0,0,.4), inset 0 3px 9px rgba(0,0,0,.22);
+}
+.reel { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.reel-ring { transform-origin: 0 0; animation: reel-spin 7s linear infinite; animation-play-state: paused; }
+.reel-btn.playing .reel-ring { animation-play-state: running; }
+.reel-ring path { fill: #161616; stroke: #161616; stroke-width: 3.6; stroke-linejoin: round; }
+.reel .hub { fill: #161616; }
+.reel .ticks path { fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-linecap: round; }
+.reel .g-play { fill: var(--white); stroke: var(--white); stroke-width: 2.2; stroke-linejoin: round; }
+.reel .g-pause { fill: var(--white); display: none; }
+.reel-btn.playing .g-play { display: none; }
+.reel-btn.playing .g-pause { display: block; }
+@keyframes reel-spin { to { transform: rotate(360deg); } }
+
+/* four round keys on a tilted plate */
+.faces { justify-self: end; }
+.faces::before {
+  content: ''; position: absolute; inset: 17%; border-radius: 28%; transform: rotate(45deg);
+  background: rgba(0,0,0,.34); box-shadow: inset 0 2px 5px rgba(0,0,0,.55); pointer-events: none;
+}
+.face {
+  position: absolute; width: 33%; height: 33%; border-radius: 50%; display: grid; place-items: center; color: #a6a6a1;
+  background: radial-gradient(circle at 36% 26%, #3d3d3d, #1e1e1e 72%);
+  box-shadow: 0 3px 0 #000, 0 5px 8px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.13);
+  transition: transform .24s var(--spring), box-shadow .24s, color .15s, background .2s;
+}
+.face::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; }
+.face.n { left: 33.5%; top: 6%; }
+.face.s { left: 33.5%; bottom: 6%; }
+.face.w { left: 6%; top: 33.5%; }
+.face.e { right: 6%; top: 33.5%; }
+.face svg { width: 54%; height: 54%; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.face:active { transform: translateY(3px) scale(.96); color: var(--accent); box-shadow: 0 0 0 #000, inset 0 2px 6px rgba(0,0,0,.7); transition-duration: .04s; }
+.face[aria-pressed="true"], .face[aria-expanded="true"] {
+  background: var(--accent); color: var(--accent-ink); box-shadow: 0 3px 0 rgba(0,0,0,.55), 0 0 16px -3px var(--accent), inset 0 1px 0 rgba(255,255,255,.35);
+}
+.face[aria-pressed="true"]:active, .face[aria-expanded="true"]:active { color: var(--accent-ink); }
 
 @media (max-width: 380px) {
   .hc-title { font-size: 18px; }
   .text-section h2 { font-size: calc(21px * var(--sub-scale)); }
   .description { font-size: calc(12.5px * var(--sub-scale)); }
 }
-@media (prefers-reduced-motion: reduce) { * { transition-duration: 0s !important; } }
+@media (prefers-reduced-motion: reduce) { * { transition-duration: 0s !important; } .reel-ring { animation: none; } }

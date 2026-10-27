@@ -48,6 +48,12 @@ export const backward = $('backward');
 export const forward = $('forward');
 export const backLabel = $('backLabel');
 export const fwdLabel = $('fwdLabel');
+export const speedUp = $('speedUp');
+export const speedDown = $('speedDown');
+export const speedLabel = $('speedLabel');
+export const loopToggle = $('loopToggle');
+export const skin = $('skin');
+export const skinFile = $('skinFile');
 
 export const sheet = $('sheet');
 export const tabs = $('tabs');

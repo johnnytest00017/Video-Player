@@ -69,10 +69,17 @@
   background: #0b0b0d; color: var(--text); font: inherit; font-size: 15px; text-align: right; font-variant-numeric: tabular-nums;
   -webkit-user-select: text; user-select: text; outline: none;
 }
+/* The invisible range input only serves the keyboard and screen readers. Touches are handled by the row itself (slider() in
+   settings.js), so a tap, or the start of a scroll, can never move a value by accident. */
 .lv-input {
-  position: absolute; z-index: 3; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer;
-  -webkit-appearance: none; appearance: none; background: none; touch-action: pan-y;
+  position: absolute; z-index: 3; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; pointer-events: none;
+  -webkit-appearance: none; appearance: none; background: none;
 }
+.lv { cursor: ew-resize; transition: transform .26s var(--spring), box-shadow .2s; }
+.lv-fill { transition: background .2s; }
+.lv.active { transform: scale(1.02); box-shadow: 0 6px 18px rgba(0,0,0,.45); transition-duration: .06s, .06s; }
+.lv.active .lv-fill { background: color-mix(in srgb, var(--accent) 42%, var(--surface-3)); }
+.lv.active .lv-grip { background: var(--accent); width: 3px; }
 .lv:has(.lv-input:focus-visible) { outline: 2px solid rgba(255,255,255,.55); outline-offset: 1px; }
 
 /* ---------- other rows ---------- */
@@ -104,9 +111,11 @@
 .seg button[aria-checked="true"] { background: var(--white); color: var(--white-ink); font-weight: 650; box-shadow: none; }
 
 .switch { position: relative; flex: none; width: 50px; height: 30px; border-radius: 15px; border: 0; background: #444; cursor: pointer; transition: background .2s; }
-.switch::after { content: ''; position: absolute; left: 3px; top: 3px; width: 24px; height: 24px; border-radius: 50%; background: #a9a9b0; transition: transform .2s var(--ease), background .2s; }
+.switch::after { content: ''; position: absolute; left: 3px; top: 3px; width: 24px; height: 24px; border-radius: 50%; background: #a9a9b0; transition: transform .26s var(--spring), width .12s, background .2s; }
 .switch[aria-checked="true"] { background: var(--accent); }
 .switch[aria-checked="true"]::after { transform: translateX(20px); background: var(--accent-ink); }
+.switch:active::after { width: 29px; }
+.switch[aria-checked="true"]:active::after { transform: translateX(15px); }
 
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .chips .chip { padding: 10px 14px; border-radius: 16px; background: var(--surface-2); border-color: transparent; font-size: 13px; }
@@ -147,3 +156,15 @@ details.more > * + * { margin-top: 8px; }
   color: var(--text-2); font-size: 15px; padding: 0 16px; height: 52px; cursor: pointer;
 }
 .preset-use:active { background: var(--white); color: var(--white-ink); }
+
+/* ---------- Look tab ---------- */
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 4px 4px; }
+.swatch {
+  appearance: none; border: 0; padding: 0; width: 32px; height: 32px; border-radius: 50%; background: var(--c); cursor: pointer; position: relative; display: inline-block;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.16); transition: transform .26s var(--spring), box-shadow .15s;
+}
+.swatch:active { transform: scale(.88); transition-duration: .05s; }
+.swatch[aria-checked="true"], .swatch.any.on { box-shadow: 0 0 0 3px var(--sheet), 0 0 0 5px var(--text); }
+.swatch.any { background: conic-gradient(#ff5c5c, #ffd34d, #6dff7a, #4dd8ff, #7a6dff, #ff5cd1, #ff5c5c); }
+.swatch.any.on::after { content: ''; position: absolute; inset: 8px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 2px rgba(0,0,0,.35); }
+.swatch.any input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }

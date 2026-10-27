@@ -8,6 +8,8 @@ import './media.js';
 import { applyBg, tick } from './background.js';
 import { applySubStyle } from './subtitles.js';
 import './settings.js';
+import './pad.js';
+import './look.js';
 import { showFlash } from './player.js';
 
 /* layout follows the display's size and the video's real dimensions */
