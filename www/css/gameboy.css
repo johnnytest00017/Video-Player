@@ -77,3 +77,25 @@ input[type=range]::-moz-range-progress { background: var(--lav); }
 .pads .pill[aria-pressed="true"] { background: linear-gradient(#e2cfff, #a67cf0); color: #2b1457; box-shadow: 0 0 14px 1px rgba(176,124,255,.8), inset 0 1px 0 rgba(255,255,255,.6); }
 
 .stage.full .controls { padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
+
+/* ============ Zxcv navbar look: dark capsule = the round wells, untouched (inactive) glass circles = the petals / pills. No white circle. ============ */
+.stage:not(.full) .controls { background: none; box-shadow: none; border-radius: 0; overflow: visible; }
+.stage:not(.full) .controls::before { content: none; }
+.well { background: rgba(5,7,10,.68); box-shadow: 0 16px 36px rgba(0,0,0,.32); }
+.well > .pad-btn, .well > .dec, .well > .core-svg { filter: none; }
+.well .body { fill: #fff; stroke: #fff; opacity: .035; transition: opacity .2s; }
+.well .petal:active .pt { filter: none; transform: scale(.94); }
+.well .petal:active .body { opacity: .12; }
+.well .petal[aria-pressed="true"] .body, .well .petal[aria-expanded="true"] .body { fill: #fff; stroke: #fff; opacity: .16; }
+.well .ico { stroke: rgba(235,241,250,.76); }
+.well .petal[aria-pressed="true"] .ico, .well .petal[aria-expanded="true"] .ico { stroke: #fff; }
+.lab, .core { fill: rgba(235,241,250,.76); }
+.core.off { fill: #fff; }
+.pads .pill {
+  background: rgba(255,255,255,.035); color: rgba(235,241,250,.76); box-shadow: none;
+  backdrop-filter: blur(28px) saturate(180%) contrast(108%); -webkit-backdrop-filter: blur(28px) saturate(180%) contrast(108%);
+}
+.pads .pill:active { background: rgba(255,255,255,.12); box-shadow: none; }
+.pads .pill[aria-pressed="true"] { background: rgba(255,255,255,.16); color: #fff; box-shadow: none; }
+input[type=range]::-webkit-slider-runnable-track { background: linear-gradient(to right, rgba(235,241,250,.76) 0 var(--p), rgba(255,255,255,.14) var(--p) 100%); }
+input[type=range]::-moz-range-progress { background: rgba(235,241,250,.76); }
