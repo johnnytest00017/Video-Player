@@ -58,6 +58,7 @@ export function applyLook() {
   r.setProperty('--ps', String(clampN(look.padScale, 50, 220, 140) / 100));
   r.setProperty('--pgap', clampN(look.padGap, -20, 400, 96) + 'px');
   r.setProperty('--pic-op', String(clampN(look.petalOp, 0, 100, 100) / 100));
+  r.setProperty('--pic-br', String(clampN(look.petalBright, 20, 250, 100) / 100));
   r.setProperty('--pic-blur', clampN(look.petalBlur, 0, 40, 12) + 'px');
   const mode = look.petalMode;
   document.documentElement.classList.toggle('has-petal-img', (mode === 1 && !!pimg) || mode === 2 || mode === 3);

@@ -8,10 +8,11 @@ const PARAMS = {
 };
 /* which petal slot (0 = top, clockwise) each button takes */
 const SLOTS = {
-  left:  { 3: { speedUp: 0, forward: 1, backward: 2 }, 6: { speedUp: 0, forward: 2, backward: 4 }, 8: { speedUp: 0, forward: 2, speedDown: 4, backward: 6 } },
-  right: { 3: { settingsToggle: 0, fsToggle: 1, adjustToggle: 2 }, 6: { settingsToggle: 0, fsToggle: 2, adjustToggle: 4 }, 8: { settingsToggle: 0, fsToggle: 2, adjustToggle: 4 } }
+  left:  { 3: { fsToggle: 0, backward: 1, speedUp: 2 }, 6: { fsToggle: 0, backward: 2, speedUp: 4 }, 8: { fsToggle: 0, backward: 2, speedUp: 4, speedDown: 6 } },
+  right: { 3: { settingsToggle: 0, forward: 1, adjustToggle: 2 }, 6: { settingsToggle: 0, forward: 2, adjustToggle: 4 }, 8: { settingsToggle: 0, forward: 2, adjustToggle: 4 } }
 };
-const ALL = { left: ['speedUp', 'speedDown', 'forward', 'backward'], right: ['settingsToggle', 'adjustToggle', 'fsToggle'] };
+const ALL = { left: ['fsToggle', 'speedUp', 'speedDown', 'backward'], right: ['settingsToggle', 'adjustToggle', 'forward'] };
+const WIDE = new Set(['forward', 'backward']);   // these two react to a press anywhere in their slice of the pad, not just on the petal
 
 function petal(center, P, sc, side) {
   const a = P.half * Math.PI / 180, t = Math.tan(a);
@@ -55,6 +56,14 @@ export function layoutPads(n, size) {
       const body = btn.querySelector('.body'); body.setAttribute('d', g.d); body.setAttribute('stroke-width', g.w.toFixed(2));
       const rc = (g.rIn + g.rO) / 2 + P.off, s = P.icon * size;
       const cx = C + rc * Math.cos(c * Math.PI / 180), cy = C + rc * Math.sin(c * Math.PI / 180);
+      if (WIDE.has(id)) {
+        const svg = btn.querySelector('svg');
+        let hit = svg.querySelector('.hit');
+        if (!hit) { hit = document.createElementNS(NS, 'path'); hit.setAttribute('class', 'hit'); svg.insertBefore(hit, svg.firstChild); }
+        const h = 180 / n, a1 = (c - h) * Math.PI / 180, a2 = (c + h) * Math.PI / 180, rr = 260;
+        const q = a => (C + rr * Math.cos(a)).toFixed(1) + ' ' + (C + rr * Math.sin(a)).toFixed(1);
+        hit.setAttribute('d', `M${C} ${C}L${q(a1)}A${rr} ${rr} 0 0 1 ${q(a2)}Z`);
+      }
       const lab = btn.querySelector('.lab');
       const dy = lab ? -6 * s : 0;
       btn.querySelector('.ico').setAttribute('transform', `translate(${cx.toFixed(1)} ${(cy + dy).toFixed(1)}) scale(${s.toFixed(2)}) translate(-12 -12)`);

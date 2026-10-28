@@ -5,9 +5,9 @@
 import { video } from './dom.js';
 import { look } from './state.js';
 
-const targets = [['.well.cyan'], ['.well.violet'], ['#playPause']].map(([sel]) => {
+const targets = [['.well.cyan'], ['.well.violet'], ['#playPause'], ['.seek-wrap']].map(([sel]) => {
   const el = document.querySelector(sel);
-  return el && { el, glass: el.querySelector('.petal-glass, .pill-glass'), pic: el.querySelector('.pic'), cv: el.querySelector('.pic canvas') };
+  return el && { el, glass: el.querySelector('.petal-glass, .pill-glass, .seek-glass'), pic: el.querySelector('.pic'), cv: el.querySelector('.pic canvas') };
 }).filter(t => t && t.glass && t.pic && t.cv);
 
 const mid = document.createElement('canvas'), field = document.createElement('canvas');

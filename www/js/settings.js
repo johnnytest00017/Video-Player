@@ -445,6 +445,7 @@ const writeList = list => { store.list = JSON.stringify(list); saveJSON(PRESET_K
   const pic = h('div');
   pic.append(
     slider({ label: 'Picture strength', min: 0, max: 100, get: () => look.skinOp, set: v => setLook({ skinOp: v }), def: LOOK_DEFAULTS.skinOp }),
+    slider({ label: 'Brightness', sub: 'darker ← → brighter', min: 20, max: 250, step: 5, get: () => look.petalBright, set: v => setLook({ petalBright: v }), def: LOOK_DEFAULTS.petalBright }),
     slider({ label: 'Picture blur', min: 0, max: 20, get: () => look.skinBlur, set: v => setLook({ skinBlur: v }), fmt: v => v === 0 ? 'Off' : v + ' px', def: LOOK_DEFAULTS.skinBlur })
   );
   showWhen(pic, () => look.skin !== 'none');

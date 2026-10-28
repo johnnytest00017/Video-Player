@@ -1,17 +1,19 @@
 /* Arrange the controls: seek bar, left pad, right pad, play, loop.
    Drag them (optionally snapping to a grid) or fine-tune with sliders: X, Y and size for the selected control. Everything is remembered. */
-const KEY = 'avp.layout.v2', GKEY = 'avp.layout.grid.v1';
+const KEY = 'avp.layout.v3', GKEY = 'avp.layout.grid.v1';
 const NAMES = { bar: 'Seek bar', left: 'Left pad', right: 'Right pad', play: 'Play', loop: 'Loop' };
+/* where everything sits unless the user moves it: [x px, y px, size %] */
+const DEFAULT = { left: [-34, -60, 100], right: [34, 60, 100], play: [0, 60, 100], loop: [0, 60, 100], bar: [0, 60, 112] };
 let pos = {}, grid = { size: 16, snap: true };
 try { pos = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { pos = {}; }
 try { grid = Object.assign(grid, JSON.parse(localStorage.getItem(GKEY) || '{}')); } catch (e) { /* ignore */ }
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(pos)); localStorage.setItem(GKEY, JSON.stringify(grid)); } catch (e) { /* ignore */ } };
 const items = () => [...document.querySelectorAll('[data-mv]')];
-const get = k => pos[k] || [0, 0, 100];
+const get = k => pos[k] || DEFAULT[k] || [0, 0, 100];
 const apply = el => {
-  const p = pos[el.dataset.mv];
-  el.style.translate = p ? p[0] + 'px ' + p[1] + 'px' : '';
-  el.style.scale = p && p[2] && p[2] !== 100 ? String(p[2] / 100) : '';
+  const p = get(el.dataset.mv);
+  el.style.translate = p[0] || p[1] ? p[0] + 'px ' + p[1] + 'px' : '';
+  el.style.scale = p[2] && p[2] !== 100 ? String(p[2] / 100) : '';
 };
 const applyAll = () => items().forEach(apply);
 applyAll();

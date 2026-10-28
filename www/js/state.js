@@ -45,9 +45,11 @@ export const savePrefs = () => saveJSON('avp.prefs.v1', prefs);
 
 /* ---- look & feel — persisted. accent / shell are #rrggbb. skin: none | circuit | image (the picture itself lives in its own storage key, see look.js).
    haptics: 0 off · 1 soft · 2 normal · 3 strong ---- */
-export const LOOK_DEFAULTS = { accent: '#f6d63b', shell: '#2b2b2b', reelAccent: 0, skin: 'none', skinOp: 55, skinBlur: 0, haptics: 2, hapticStr: 50, padScale: 140, padGap: 96, petalOp: 100, petalBlur: 12, padPetals: 3, petalMode: 0, icoColor: '#ebf1fa', icoSize: 100 };
+export const LOOK_DEFAULTS = { accent: '#f6d63b', shell: '#2b2b2b', reelAccent: 0, skin: 'none', skinOp: 55, skinBlur: 0, haptics: 2, hapticStr: 50, padScale: 140, padGap: 74, petalOp: 100, petalBlur: 12, padPetals: 6, petalMode: 0, petalBright: 100, v3: 0, icoColor: '#ebf1fa', icoSize: 100 };
 export const look = loadJSON('avp.look.v1', LOOK_DEFAULTS);
 export const saveLook = () => saveJSON('avp.look.v1', look);
+/* one-time: the new default layout (6 petals · size 140 · space 74) also applies to settings saved by older versions */
+if (!look.v3) { look.padPetals = 6; look.padScale = 140; look.padGap = 74; look.v3 = 1; saveLook(); }
 
 /* ---- ambient settings — persisted. v2 key: v1 values are imported once (smooth motion is switched off: it redraws every screen frame). ---- */
 export const AMBI_KEY = 'ambilightSettings.v2';

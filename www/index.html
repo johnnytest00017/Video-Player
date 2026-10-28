@@ -119,7 +119,7 @@
 
       <div class="seek-row" data-mv="bar">
         <span class="time" id="currentTime">0:00</span>
-        <input id="seek" class="range" type="range" min="0" max="1000" value="0" aria-label="Seek video">
+        <div class="seek-wrap"><div class="seek-glass" aria-hidden="true"><div class="pic"><canvas></canvas></div></div><input id="seek" class="range" type="range" min="0" max="1000" value="0" aria-label="Seek video"></div>
         <span class="time" id="duration">0:00</span>
       </div>
 
@@ -128,14 +128,14 @@
       <svg class="wdefs" width="0" height="0" aria-hidden="true"></svg>
       <div class="well cyan" data-mv="left">
         <div class="petal-glass" aria-hidden="true"><div class="pic"><canvas></canvas></div></div>
+        <button class="pad-btn petal" id="fsToggle" type="button" aria-label="Fullscreen" title="Fullscreen">
+          <svg viewBox="0 0 400 400" aria-hidden="true"><g class="pt"><path class="body" d=""/><g class="ico"><path id="fsPath" d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></g></g></svg>
+        </button>
         <button class="pad-btn petal" id="speedUp" type="button" aria-label="Faster" title="Speed (tap: faster, hold: normal)">
           <svg viewBox="0 0 400 400" aria-hidden="true"><g class="pt"><path class="body" d=""/><g class="ico"><g class="ic ic-cycle"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></g><g class="ic ic-up"><path d="m17 11-5-5-5 5M17 18l-5-5-5 5"/></g></g><text id="speedLabel" class="lab" text-anchor="middle">1×</text></g></svg>
         </button>
         <button class="pad-btn petal" id="speedDown" type="button" aria-label="Slower" title="Slower">
           <svg viewBox="0 0 400 400" aria-hidden="true"><g class="pt"><path class="body" d=""/><g class="ico"><g class="ic"><path d="m7 6 5 5 5-5M7 13l5 5 5-5"/></g></g></g></svg>
-        </button>
-        <button class="pad-btn petal" id="forward" type="button" aria-label="Forward 10 seconds" title="Forward (hold to keep going)">
-          <svg viewBox="0 0 400 400" aria-hidden="true"><g class="pt"><path class="body" d=""/><g class="ico"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><text id="fwdLabel" class="lab-in" x="12" y="15.3" text-anchor="middle">10</text></g></g></svg>
         </button>
         <button class="pad-btn petal" id="backward" type="button" aria-label="Back 10 seconds" title="Back (hold to keep going)">
           <svg viewBox="0 0 400 400" aria-hidden="true"><g class="pt"><path class="body" d=""/><g class="ico"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><text id="backLabel" class="lab-in" x="12" y="15.3" text-anchor="middle">10</text></g></g></svg>
@@ -158,8 +158,8 @@
         <button class="pad-btn petal" id="adjustToggle" type="button" aria-label="Move and zoom video" title="Move and zoom video" aria-pressed="false">
           <svg viewBox="0 0 400 400" aria-hidden="true"><g class="pt"><path class="body" d=""/><g class="ico"><path d="M12 2v20M2 12h20M15 19l-3 3-3-3M19 9l3 3-3 3M5 9l-3 3 3 3M9 5l3-3 3 3"/></g></g></svg>
         </button>
-        <button class="pad-btn petal" id="fsToggle" type="button" aria-label="Fullscreen" title="Fullscreen">
-          <svg viewBox="0 0 400 400" aria-hidden="true"><g class="pt"><path class="body" d=""/><g class="ico"><path id="fsPath" d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></g></g></svg>
+        <button class="pad-btn petal" id="forward" type="button" aria-label="Forward 10 seconds" title="Forward (hold to keep going)">
+          <svg viewBox="0 0 400 400" aria-hidden="true"><g class="pt"><path class="body" d=""/><g class="ico"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><text id="fwdLabel" class="lab-in" x="12" y="15.3" text-anchor="middle">10</text></g></g></svg>
         </button>
       </div>
       </div>
