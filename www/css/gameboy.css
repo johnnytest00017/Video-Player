@@ -258,3 +258,12 @@ html.light .colortext { border-color: rgba(0,0,0,.2); background: rgba(0,0,0,.04
 html.light .colortext:focus { border-color: rgba(0,0,0,.5); }
 html.light .preset-form input:focus { outline-color: rgba(0,0,0,.35); }
 html.light .home-card.dark { box-shadow: inset 0 0 0 1px rgba(0,0,0,.07); }
+
+/* ============ v17: subtitle font of your own; play is just an icon ============ */
+.text-section h2, .text-section .description { font-family: var(--sub-font, inherit); }
+.pads #playPause, .pads #playPause:active, .pads #playPause.zone-down, html.light .stage:not(.full) .pads #playPause, html.light .stage:not(.full) .pads #playPause:active, html.light .stage:not(.full) .pads #playPause.zone-down {
+  background: none; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+.pads #playPause .pill-glass { display: none !important; }
+.pads #playPause .pg { width: calc(34px * var(--icos)); height: calc(34px * var(--icos)); transition: transform .2s var(--spring); }
+.pads #playPause:active .pg, .pads #playPause.zone-down .pg { transform: scale(.88); }

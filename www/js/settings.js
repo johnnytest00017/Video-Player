@@ -17,7 +17,8 @@ import { pickVideoFile, pickSrtFile, pickExtFile, removeSrt } from './media.js';
 import * as ext from './extended.js';
 import { haptic, hapticDemo } from './haptics.js';
 import { setLook, loadSkinFile, clearSkinImage, hasSkinImage, loadPetalFile, clearPetalImage, hasPetalImage, parseColor } from './look.js';
-import { skinFile, petalFile } from './dom.js';
+import { skinFile, petalFile, fontFile } from './dom.js';
+import { pickFont, clearFont, fontName, restoreFont } from './subfont.js';
 import { startArranging, resetLayout } from './arrange.js';
 
 /* ---------- tiny DOM helpers ---------- */
@@ -427,6 +428,7 @@ const writeList = list => { store.list = JSON.stringify(list); saveJSON(PRESET_K
     toggle({ label: 'Loop video', get: () => prefs.loop, set: v => { prefs.loop = v; savePrefs(); emit('loop'); } }),
     toggle({ label: 'Keep screen on', sub: 'while playing', get: () => prefs.keepAwake, set: v => { prefs.keepAwake = v; savePrefs(); emit('keep-awake'); } }),
     group('Subtitles'),
+    fileRow('Font', () => fontName() || 'Default', button('Choose font', 'primary', () => fontFile.click()), button('Remove', 'danger', async () => { await clearFont(); syncAll(); })),
     slider({ label: 'Size', min: 70, max: 160, get: () => prefs.subScale, set: v => { prefs.subScale = v; savePrefs(); applySubStyle(); }, def: 100 }),
     slider({ label: 'Delay', sub: 'positive = subtitles appear later', min: -10, max: 10, step: .1, get: () => prefs.subDelay, set: v => { prefs.subDelay = Math.round(v * 10) / 10; savePrefs(); applySubStyle(); }, fmt: v => (v > 0 ? '+' : '') + v.toFixed(1) + ' s', def: 0 })
   );
@@ -459,6 +461,8 @@ const writeList = list => { store.list = JSON.stringify(list); saveJSON(PRESET_K
     slider({ label: 'Picture strength', min: 0, max: 100, get: () => look.petalOp, set: v => setLook({ petalOp: v }), def: LOOK_DEFAULTS.petalOp }),
     slider({ label: 'Picture blur', min: 0, max: 40, get: () => look.petalBlur, set: v => setLook({ petalBlur: v }), fmt: v => v === 0 ? 'Off' : v + ' px', def: LOOK_DEFAULTS.petalBlur })
   );
+  fontFile.addEventListener('change', async () => { await pickFont(fontFile.files && fontFile.files[0]); fontFile.value = ''; syncAll(); });
+restoreFont().then(syncAll);
   petalFile.addEventListener('change', async () => { await loadPetalFile(petalFile.files && petalFile.files[0]); petalFile.value = ''; syncAll(); });
 
   p.append(
