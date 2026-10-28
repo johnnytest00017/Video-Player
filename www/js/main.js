@@ -9,6 +9,7 @@ import { applyBg, tick } from './background.js';
 import { applySubStyle } from './subtitles.js';
 import './settings.js';
 import './pad.js';
+import './zones.js';
 import './look.js';
 import { showFlash } from './player.js';
 

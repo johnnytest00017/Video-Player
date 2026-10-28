@@ -195,8 +195,6 @@ input[type=range]::-moz-range-progress { background: rgba(235,241,250,.76); }
 /* ============ v11: wide press areas, modern seek bar, ambient brightness ============ */
 .pic { filter: blur(var(--pic-blur, 12px)) saturate(180%) contrast(108%) brightness(var(--pic-br, 1)); }
 .well .hit { fill: transparent; stroke: none; pointer-events: all; }
-/* play: the press area reaches out into the black around it */
-.pads #playPause::after { content: ''; position: absolute; inset: -16px -18px -4px -18px; border-radius: 22px; }
 
 /* seek bar: a flat bar, only slightly rounded, no thumb; the filled part carries the ambient colours */
 .seek-wrap { position: relative; flex: 1; min-width: 0; height: 5px; }
@@ -209,3 +207,8 @@ input[type=range]::-moz-range-progress { background: rgba(235,241,250,.76); }
 #seek::-moz-range-progress { height: 5px; border-radius: 3px; background: transparent; }
 #seek::-moz-range-thumb { width: 0; height: 5px; border: 0; background: transparent; }
 #seek:focus-visible { outline: none; }
+
+/* press feedback when a key is pressed through its invisible area (v12) */
+.pads .pill.zone-down { background: rgba(255,255,255,.12); box-shadow: none; }
+.well .petal.zone-down .pt { transform: scale(.94); }
+.well .petal.zone-down .body { opacity: .12; }

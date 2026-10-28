@@ -12,7 +12,7 @@ const SLOTS = {
   right: { 3: { settingsToggle: 0, forward: 2 }, 6: { settingsToggle: 0, forward: 4 }, 8: { settingsToggle: 0, forward: 6 } }
 };
 const ALL = { left: ['fsToggle', 'speedUp', 'speedDown', 'backward'], right: ['settingsToggle', 'adjustToggle', 'forward'] };
-const WIDE = new Set(['forward', 'backward']);   // these two react to a press anywhere in their slice of the pad, not just on the petal
+const WIDE = new Set();   // these two react to a press anywhere in their slice of the pad, not just on the petal
 
 function petal(center, P, sc, side) {
   const a = P.half * Math.PI / 180, t = Math.tan(a);
