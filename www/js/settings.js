@@ -462,6 +462,9 @@ const writeList = list => { store.list = JSON.stringify(list); saveJSON(PRESET_K
   petalFile.addEventListener('change', async () => { await loadPetalFile(petalFile.files && petalFile.files[0]); petalFile.value = ''; syncAll(); });
 
   p.append(
+    group('Theme'),
+    segmented({ options: [['dark', 'Dark'], ['light', 'Light']], get: () => look.theme, set: v => setLook({ theme: v }) }),
+
     group('Colours'),
     swatches({ label: 'Accent', colors: ACCENTS, get: () => look.accent, set: v => setLook({ accent: v }) }),
     swatches({ label: 'Controls shell', colors: SHELLS, get: () => look.shell, set: v => setLook({ shell: v }) }),

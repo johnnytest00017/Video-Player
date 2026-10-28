@@ -1,6 +1,6 @@
 /* ============ Game Boy look: rounded video card, centred subtitles, glass pad housing with a cyan D-pad and a violet petal fan ============ */
 :root { --bg: #000; --cyan: #3fd6ee; --violet: #b07cff; --lav: #d9ccff; }
-html, body, .app, .stage { background: #000; }
+html, body, .app, .stage { background: var(--page, #000); }
 .stage { --well: min(35vw, 150px); --dh: min(var(--display-h), calc(100% - var(--well) - 180px)); }
 .stage.full { --well: 118px; }
 
@@ -8,9 +8,9 @@ html, body, .app, .stage { background: #000; }
 .stage:not(.full) .video-wrap { margin: calc(10px + env(safe-area-inset-top, 0px)) 0 0; flex-basis: calc(var(--dh) - 24px); }
 .stage:not(.full):not(.round-off) .video-wrap::before,
 .stage:not(.full):not(.round-off) .video-wrap::after { content: ''; position: absolute; z-index: 6; top: -1px; width: calc(var(--corner) + 1px); height: calc(var(--corner) + 1px); pointer-events: none; }
-.stage:not(.full):not(.round-off) .video-wrap::before { left: -1px; background: radial-gradient(circle var(--corner) at calc(var(--corner) + 1px) calc(var(--corner) + 1px), transparent calc(var(--corner) - .6px), #000 calc(var(--corner) + .4px)); }
-.stage:not(.full):not(.round-off) .video-wrap::after { right: -1px; background: radial-gradient(circle var(--corner) at 0 calc(var(--corner) + 1px), transparent calc(var(--corner) - .6px), #000 calc(var(--corner) + .4px)); }
-.corner.l, .corner.r { --bg: #000; }
+.stage:not(.full):not(.round-off) .video-wrap::before { left: -1px; background: radial-gradient(circle var(--corner) at calc(var(--corner) + 1px) calc(var(--corner) + 1px), transparent calc(var(--corner) - .6px), var(--page, #000) calc(var(--corner) + .4px)); }
+.stage:not(.full):not(.round-off) .video-wrap::after { right: -1px; background: radial-gradient(circle var(--corner) at 0 calc(var(--corner) + 1px), transparent calc(var(--corner) - .6px), var(--page, #000) calc(var(--corner) + .4px)); }
+.corner.l, .corner.r { --bg: var(--page, #000); }
 .play-overlay { width: 84px; height: 84px; background: rgba(60,50,40,.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
 .play-overlay svg { width: 34px; height: 38px; margin-left: 5px; }
 
@@ -212,3 +212,49 @@ input[type=range]::-moz-range-progress { background: rgba(235,241,250,.76); }
 .pads .pill.zone-down { background: rgba(255,255,255,.12); box-shadow: none; }
 .well .petal.zone-down .pt { transform: scale(.94); }
 .well .petal.zone-down .body { opacity: .12; }
+
+/* ============ v15: no dark circle behind the petals, seek bar above the pads and nearly invisible, light theme ============ */
+.well { background: none !important; box-shadow: none !important; }
+.controls > .seek-row { position: relative; z-index: 6; }
+.seek-glass { opacity: .4; }
+:root { --seek-off: rgba(0,0,0,.8); }
+#seek::-webkit-slider-runnable-track { background: linear-gradient(to right, transparent 0 var(--p), var(--seek-off) var(--p) 100%); }
+#seek::-moz-range-track { background: var(--seek-off); }
+
+:root { --page: #000; }
+html.light {
+  --page: #f1f1ee; --bg: #f1f1ee; --sheet: #fbfbf9; --surface: #fbfbf9; --surface-2: #ebebe7; --surface-3: #d8d8d2;
+  --line: rgba(0,0,0,.09); --text: #171717; --text-2: #3b3b39; --muted: #6c6c68; --faint: #8f8f8a;
+  --white: #1d1d1d; --white-ink: #f6f6f3; --seek-off: rgba(241,241,238,.88); color-scheme: light;
+}
+html.light[data-ico="default"] .stage:not(.full) { --ico: #23262b; }
+html.light .stage:not(.full) .well .body { fill: #000; stroke: #000; opacity: .06; }
+html.light .stage:not(.full) .well .petal:active .body { opacity: .16; }
+html.light .stage:not(.full) .well .petal[aria-pressed="true"] .body, html.light .stage:not(.full) .well .petal[aria-expanded="true"] .body { fill: #000; stroke: #000; opacity: .18; }
+html.light .stage:not(.full) .well .petal[aria-pressed="true"] .ico, html.light .stage:not(.full) .well .petal[aria-expanded="true"] .ico { stroke: #000; }
+html.light .stage:not(.full) .pads .pill { background: rgba(0,0,0,.06); }
+html.light .stage:not(.full) .pads .pill:active, html.light .stage:not(.full) .pads .pill.zone-down { background: rgba(0,0,0,.16); }
+html.light .stage:not(.full) .pads .pill[aria-pressed="true"] { background: rgba(0,0,0,.2); color: #000; }
+html.light .seek-glass { background: rgba(40,44,52,.55); }
+html.light .stage:not(.full) .text-section h2 { color: var(--text); text-shadow: none; }
+html.light .stage:not(.full) .description { color: var(--text-2); text-shadow: none; }
+html.light .chip { background: rgba(255,255,255,.85); }
+html.light .sheet { border-top-color: rgba(0,0,0,.08); box-shadow: 0 -14px 44px rgba(0,0,0,.18); }
+html.light .sheet-grab { background: #cbcbc5; }
+html.light .lv-ticks { background-image: radial-gradient(circle, rgba(0,0,0,.22) 0 1.6px, transparent 2.2px); }
+html.light .lv.active { box-shadow: 0 6px 18px rgba(0,0,0,.14); }
+html.light .lv-val:active, html.light .lv-reset:active { background: rgba(0,0,0,.06); }
+html.light .lv-edit { background: #fff; border-color: #bdbdb7; }
+html.light .lv:has(.lv-input:focus-visible) { outline-color: rgba(0,0,0,.4); }
+html.light .switch { background: #c6c6c0; }
+html.light .switch::after { background: #fff; }
+html.light .switch[aria-checked="true"] { background: var(--accent); }
+html.light .switch[aria-checked="true"]::after { background: var(--accent-ink); }
+html.light .swatch { box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); }
+html.light .swatch[aria-checked="true"], html.light .swatch.any.on { box-shadow: 0 0 0 3px var(--sheet), 0 0 0 5px var(--text); }
+html.light .icon-btn:hover, html.light .icon-btn[aria-expanded="true"], html.light .icon-btn[aria-pressed="true"] { background: rgba(0,0,0,.06); }
+html.light input[type=range].range::-webkit-slider-runnable-track { background: linear-gradient(to right, var(--accent) 0 var(--p), rgba(0,0,0,.14) var(--p) 100%); }
+html.light .colortext { border-color: rgba(0,0,0,.2); background: rgba(0,0,0,.04); }
+html.light .colortext:focus { border-color: rgba(0,0,0,.5); }
+html.light .preset-form input:focus { outline-color: rgba(0,0,0,.35); }
+html.light .home-card.dark { box-shadow: inset 0 0 0 1px rgba(0,0,0,.07); }

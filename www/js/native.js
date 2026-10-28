@@ -27,3 +27,9 @@ export function keepAwake(on) {
   else if (lock) { try { lock.release(); } catch (e) { /* ignore */ } lock = null; }
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') acquire(); });
+
+/* Status-bar icons: dark icons on the light theme, light icons on the dark one. */
+export async function setBarsStyle(light) {
+  if (!isNative) return;
+  try { const bars = cap.Plugins && cap.Plugins.SystemBars; if (bars && bars.setStyle) await bars.setStyle({ style: light ? 'LIGHT' : 'DARK' }); } catch (e) { /* ignore */ }
+}

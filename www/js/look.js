@@ -3,6 +3,7 @@ import { look, saveLook, LOOK_DEFAULTS, emit } from './state.js';
 import { skin } from './dom.js';
 import { layoutPads } from './pads.js';
 import { refreshFx } from './petalfx.js';
+import { setBarsStyle } from './native.js';
 
 const IMG_KEY = 'avp.skinimg.v1';
 let img = '';
@@ -64,9 +65,15 @@ export function applyLook() {
   document.documentElement.classList.toggle('has-petal-img', (mode === 1 && !!pimg) || mode === 2 || mode === 3);
   document.documentElement.dataset.pmode = String(mode);
   document.querySelectorAll('.pic').forEach(e => { e.style.backgroundImage = pimg && mode === 1 ? `url("${pimg}")` : 'none'; });
-  r.setProperty('--ico', parseColor(look.icoColor, true) || '#ebf1fa');
+  const icoUser = parseColor(look.icoColor, true) || '#ebf1fa';
+  r.setProperty('--ico', icoUser);
+  document.documentElement.dataset.ico = (look.icoColor || '').toLowerCase() === LOOK_DEFAULTS.icoColor ? 'default' : 'custom';   // light theme swaps only the default icon colour
   r.setProperty('--icos', String(clampN(look.icoSize, 50, 200, 100) / 100));
   layoutPads(look.padPetals, clampN(look.icoSize, 50, 200, 100));
+  const light = look.theme === 'light';
+  document.documentElement.classList.toggle('light', light);
+  for (const [n, c] of [['color-scheme', light ? 'light' : 'dark'], ['theme-color', light ? '#f1f1ee' : '#000000']]) { const m = document.querySelector('meta[name="' + n + '"]'); if (m) m.setAttribute('content', c); }
+  setBarsStyle(light);
   refreshFx();
   const kind = look.skin === 'image' && !img ? 'none' : look.skin;
   skin.className = 'skin ' + kind;
