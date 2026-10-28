@@ -18,6 +18,7 @@ import * as ext from './extended.js';
 import { haptic, hapticDemo } from './haptics.js';
 import { setLook, loadSkinFile, clearSkinImage, hasSkinImage, loadPetalFile, clearPetalImage, hasPetalImage } from './look.js';
 import { skinFile, petalFile } from './dom.js';
+import { startArranging, resetLayout } from './arrange.js';
 
 /* ---------- tiny DOM helpers ---------- */
 const h = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -446,7 +447,6 @@ const writeList = list => { store.list = JSON.stringify(list); saveJSON(PRESET_K
     slider({ label: 'Picture strength', min: 0, max: 100, get: () => look.petalOp, set: v => setLook({ petalOp: v }), def: LOOK_DEFAULTS.petalOp }),
     slider({ label: 'Picture blur', min: 0, max: 40, get: () => look.petalBlur, set: v => setLook({ petalBlur: v }), fmt: v => v === 0 ? 'Off' : v + ' px', def: LOOK_DEFAULTS.petalBlur })
   );
-  showWhen(petalPic, () => hasPetalImage());
   petalFile.addEventListener('change', async () => { await loadPetalFile(petalFile.files && petalFile.files[0]); petalFile.value = ''; syncAll(); });
 
   p.append(
@@ -462,13 +462,22 @@ const writeList = list => { store.list = JSON.stringify(list); saveJSON(PRESET_K
     note('Your picture is shrunk and kept inside the app. Lower the strength if the controls get hard to read.'),
 
     group('Pads'),
+    segmented({ label: 'Petals per pad', options: [[3, '3'], [6, '6'], [8, '8']], get: () => look.padPetals, set: v => { setLook({ padPetals: v }); haptic.thud(); } }),
+    note('With 6 or 8 petals the extra petals are glass decoration. 8 petals also gives you separate faster and slower keys.'),
     slider({ label: 'Pad size', min: 50, max: 220, step: 5, get: () => look.padScale, set: v => setLook({ padScale: v }), def: LOOK_DEFAULTS.padScale }),
     slider({ label: 'Space between pads', min: -20, max: 400, step: 2, fmt: v => v + ' px', get: () => look.padGap, set: v => setLook({ padGap: v }), def: LOOK_DEFAULTS.padGap }),
-    note('Push the space up and the pads slide off the edges of the screen. Pad size changes both pads.'),
+    btnRow(button('Move the controls', 'primary', () => { closeSheet(); startArranging(); }), button('Reset positions', '', () => resetLayout())),
+    note('Move: drag the seek bar, each pad, play and loop anywhere — even off the edge of the screen. Tap Done when finished.'),
 
-    group('Picture behind the petals'),
-    petalRow, petalPic,
-    note('The picture shows through the glass petals only, blurred like the navbar glass.'),
+    group('Icons'),
+    swatches({ label: 'Icon colour', colors: [['#ebf1fa', 'Soft white'], ['#ffffff', 'White'], ['#ffd54a', 'Yellow'], ['#6ee7ff', 'Cyan'], ['#c9a2ff', 'Violet'], ['#ff6b81', 'Red']], get: () => look.icoColor, set: v => setLook({ icoColor: v }) }),
+    slider({ label: 'Icon size', min: 50, max: 200, step: 5, get: () => look.icoSize, set: v => setLook({ icoSize: v }), def: LOOK_DEFAULTS.icoSize }),
+
+    group('Behind the petals'),
+    segmented({ options: [[0, 'Off'], [1, 'Picture'], [2, 'Mirror'], [3, 'Ambient']], get: () => look.petalMode, set: v => { setLook({ petalMode: v }); syncAll(); } }),
+    showWhen(petalRow, () => look.petalMode === 1),
+    showWhen(petalPic, () => look.petalMode !== 0),
+    note('Picture: your own image · Mirror: the video itself, blurred · Ambient: the video\'s colours as a soft glow. All shown through the glass petals only.'),
 
     group('Feel'),
     slider({ label: 'Vibration strength', sub: 'drag to feel it · 0 turns vibration off', min: 0, max: 100, step: 5, get: () => look.hapticStr, set: v => { setLook({ hapticStr: v }); haptic.thud(); }, fmt: v => v === 0 ? 'Off' : v + '%', def: LOOK_DEFAULTS.hapticStr }),

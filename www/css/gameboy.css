@@ -118,5 +118,34 @@ input[type=range]::-moz-range-progress { background: rgba(235,241,250,.76); }
 .lab-in { fill: rgba(235,241,250,.76); font: 800 7.2px/1 var(--font); stroke: none; font-variant-numeric: tabular-nums; pointer-events: none; }
 .ico { stroke-width: 1.8; }
 .pg .g-play { stroke: currentColor; stroke-width: 2.4; stroke-linejoin: round; }
-.cyan .petal-glass { -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20400%20400%22%3E%3Cg%20fill%3D%22%23fff%22%20stroke%3D%22%23fff%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M237.89%20142.33L319.56%2095.18A159.00%20159.00%200%200%200%2080.44%2095.18L162.11%20142.33A69.00%2069.00%200%200%201%20237.89%20142.33Z%22%20stroke-width%3D%2246.00%22/%3E%3Cpath%20d%3D%22M131.11%20196.02L49.44%20148.87A159.00%20159.00%200%200%200%20169.00%20355.95L169.00%20261.64A69.00%2069.00%200%200%201%20131.11%20196.02Z%22%20stroke-width%3D%2246.00%22/%3E%3Cpath%20d%3D%22M231.00%20261.64L231.00%20355.95A159.00%20159.00%200%200%200%20350.56%20148.87L268.89%20196.02A69.00%2069.00%200%200%201%20231.00%20261.64Z%22%20stroke-width%3D%2246.00%22/%3E%3C/g%3E%3C/svg%3E") center / 100% 100% no-repeat; mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20400%20400%22%3E%3Cg%20fill%3D%22%23fff%22%20stroke%3D%22%23fff%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M237.89%20142.33L319.56%2095.18A159.00%20159.00%200%200%200%2080.44%2095.18L162.11%20142.33A69.00%2069.00%200%200%201%20237.89%20142.33Z%22%20stroke-width%3D%2246.00%22/%3E%3Cpath%20d%3D%22M131.11%20196.02L49.44%20148.87A159.00%20159.00%200%200%200%20169.00%20355.95L169.00%20261.64A69.00%2069.00%200%200%201%20131.11%20196.02Z%22%20stroke-width%3D%2246.00%22/%3E%3Cpath%20d%3D%22M231.00%20261.64L231.00%20355.95A159.00%20159.00%200%200%200%20350.56%20148.87L268.89%20196.02A69.00%2069.00%200%200%201%20231.00%20261.64Z%22%20stroke-width%3D%2246.00%22/%3E%3C/g%3E%3C/svg%3E") center / 100% 100% no-repeat; }
-.violet .petal-glass { -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20400%20400%22%3E%3Cg%20fill%3D%22%23fff%22%20stroke%3D%22%23fff%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M237.89%20142.33L319.56%2095.18A159.00%20159.00%200%200%200%2080.44%2095.18L162.11%20142.33A69.00%2069.00%200%200%201%20237.89%20142.33Z%22%20stroke-width%3D%2246.00%22/%3E%3Cpath%20d%3D%22M131.11%20196.02L49.44%20148.87A159.00%20159.00%200%200%200%20169.00%20355.95L169.00%20261.64A69.00%2069.00%200%200%201%20131.11%20196.02Z%22%20stroke-width%3D%2246.00%22/%3E%3Cpath%20d%3D%22M231.00%20261.64L231.00%20355.95A159.00%20159.00%200%200%200%20350.56%20148.87L268.89%20196.02A69.00%2069.00%200%200%201%20231.00%20261.64Z%22%20stroke-width%3D%2246.00%22/%3E%3C/g%3E%3C/svg%3E") center / 100% 100% no-repeat; mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20400%20400%22%3E%3Cg%20fill%3D%22%23fff%22%20stroke%3D%22%23fff%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M237.89%20142.33L319.56%2095.18A159.00%20159.00%200%200%200%2080.44%2095.18L162.11%20142.33A69.00%2069.00%200%200%201%20237.89%20142.33Z%22%20stroke-width%3D%2246.00%22/%3E%3Cpath%20d%3D%22M131.11%20196.02L49.44%20148.87A159.00%20159.00%200%200%200%20169.00%20355.95L169.00%20261.64A69.00%2069.00%200%200%201%20131.11%20196.02Z%22%20stroke-width%3D%2246.00%22/%3E%3Cpath%20d%3D%22M231.00%20261.64L231.00%20355.95A159.00%20159.00%200%200%200%20350.56%20148.87L268.89%20196.02A69.00%2069.00%200%200%201%20231.00%20261.64Z%22%20stroke-width%3D%2246.00%22/%3E%3C/g%3E%3C/svg%3E") center / 100% 100% no-repeat; }
+
+/* ============ v9: dynamic petals, glass modes, icon colour + size, movable controls ============ */
+:root { --ico: #ebf1fa; --icos: 1; }
+.well .ico { stroke: var(--ico); }
+.lab, .lab-in { fill: var(--ico); }
+.pads .pill { color: var(--ico); }
+.pg { width: calc(22px * var(--icos)); height: calc(22px * var(--icos)); }
+.well .petal[aria-pressed="true"] .ico, .well .petal[aria-expanded="true"] .ico { stroke: #fff; }
+/* speed key: gauge in 3/6 mode, chevron in 8 mode; the slower key only exists in 8 mode */
+.pads[data-n="8"] .ic-cycle, .pads:not([data-n="8"]) .ic-up { display: none; }
+.pads:not([data-n="8"]) #speedDown { display: none !important; }
+.pic canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
+[data-pmode="2"] .pic canvas, [data-pmode="3"] .pic canvas { display: block; }
+
+/* moving the controls */
+.stage:not(.full) .controls { position: relative; z-index: 8; }
+[data-mv] { touch-action: none; }
+.arranging [data-mv] { outline: 2px dashed rgba(255,255,255,.55); outline-offset: 4px; cursor: grab; z-index: 9; }
+.arranging .well[data-mv] { outline-offset: 6px; border-radius: 50%; }
+.arranging [data-mv].dragging { outline-color: #fff; cursor: grabbing; }
+.arranging .pad-btn, .arranging .reel-btn { pointer-events: none; }
+.arranging .pill[data-mv] { pointer-events: auto; }
+.arrange-bar {
+  position: fixed; z-index: 60; left: 50%; transform: translateX(-50%); top: calc(10px + env(safe-area-inset-top, 0px));
+  display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 16px; border-radius: 999px;
+  background: rgba(5,7,10,.82); color: rgba(235,241,250,.9); font: 600 13px/1 var(--font); white-space: nowrap;
+  backdrop-filter: blur(28px) saturate(180%); -webkit-backdrop-filter: blur(28px) saturate(180%); box-shadow: 0 16px 36px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,255,255,.12);
+}
+.arrange-bar[hidden] { display: none; }
+.arrange-bar button { appearance: none; border: 0; border-radius: 999px; padding: 9px 14px; font: inherit; color: inherit; background: rgba(255,255,255,.1); cursor: pointer; }
+.arrange-bar .done { background: #fff; color: #000; }

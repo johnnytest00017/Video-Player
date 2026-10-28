@@ -1,6 +1,6 @@
 /* The game-pad controls: D-pad (left / right skip, up / down speed — hold to repeat), the reel's press feel and the round keys. */
-import { video, controls, backward, forward, speedUp, speedLabel, loopToggle } from './dom.js';
-import { S, prefs, savePrefs, on, emit } from './state.js';
+import { video, controls, backward, forward, speedUp, speedDown, speedLabel, loopToggle } from './dom.js';
+import { S, prefs, savePrefs, on, emit, look } from './state.js';
 import { clamp } from './util.js';
 import { skipBy, setSpeed, showFlash } from './player.js';
 import { haptic } from './haptics.js';
@@ -48,21 +48,26 @@ function stepSpeed(dir) {
     if (again || SPEEDS[j] === 1) { if (SPEEDS[j] === 1) haptic.thud(); else haptic.tick(); }   // normal speed is a detent
   };
 }
-/* one speed key: tap = next speed up (wraps round to the slowest), hold = back to normal */
+/* speed: 3 / 6 petals → one key (tap = next speed up, wraps round; hold = back to normal). 8 petals → separate faster / slower keys. */
 const CYCLE = [0.5, 0.75, 1, 1.25, 1.5, 2];
+const eight = () => look.padPetals === 8;
 let heldT = 0, held = false;
 speedUp.addEventListener('pointerdown', () => {
   held = false; clearTimeout(heldT);
   heldT = setTimeout(() => { held = true; if (!S.videoLoaded) return; setSpeed(1); showFlash('1×'); haptic.thud(); }, 500);
 });
 ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => speedUp.addEventListener(ev, () => clearTimeout(heldT)));
-speedUp.addEventListener('click', () => {
-  if (held) { held = false; return; }
+function goSpeed(dir, wrap) {
   if (!S.videoLoaded) return;
-  const cur = video.playbackRate, i = CYCLE.findIndex(s => s > cur + .001), next = i < 0 ? CYCLE[0] : CYCLE[i];
+  const cur = video.playbackRate;
+  let next;
+  if (dir > 0) { const i = CYCLE.findIndex(s => s > cur + .001); next = i < 0 ? (wrap ? CYCLE[0] : CYCLE[CYCLE.length - 1]) : CYCLE[i]; }
+  else { const i = [...CYCLE].reverse().findIndex(s => s < cur - .001); next = i < 0 ? CYCLE[0] : [...CYCLE].reverse()[i]; }
   setSpeed(next); showFlash(fmtSpeed(next));
   if (next === 1) haptic.thud(); else haptic.tick();
-});
+}
+speedUp.addEventListener('click', () => { if (held) { held = false; return; } goSpeed(1, !eight()); });
+speedDown.addEventListener('click', () => goSpeed(-1, false));
 const paintSpeed = () => {
   const s = video.playbackRate;
   speedLabel.textContent = fmtSpeed(Math.round(s * 100) / 100);

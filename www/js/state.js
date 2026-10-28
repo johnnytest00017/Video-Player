@@ -45,7 +45,7 @@ export const savePrefs = () => saveJSON('avp.prefs.v1', prefs);
 
 /* ---- look & feel — persisted. accent / shell are #rrggbb. skin: none | circuit | image (the picture itself lives in its own storage key, see look.js).
    haptics: 0 off · 1 soft · 2 normal · 3 strong ---- */
-export const LOOK_DEFAULTS = { accent: '#f6d63b', shell: '#2b2b2b', reelAccent: 0, skin: 'none', skinOp: 55, skinBlur: 0, haptics: 2, hapticStr: 50, padScale: 140, padGap: 96, petalOp: 100, petalBlur: 12 };
+export const LOOK_DEFAULTS = { accent: '#f6d63b', shell: '#2b2b2b', reelAccent: 0, skin: 'none', skinOp: 55, skinBlur: 0, haptics: 2, hapticStr: 50, padScale: 140, padGap: 96, petalOp: 100, petalBlur: 12, padPetals: 3, petalMode: 0, icoColor: '#ebf1fa', icoSize: 100 };
 export const look = loadJSON('avp.look.v1', LOOK_DEFAULTS);
 export const saveLook = () => saveJSON('avp.look.v1', look);
 

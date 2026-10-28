@@ -107,6 +107,12 @@
     </section>
 
     <!-- ===== Controls: a little game pad. D-pad = skip + speed, reel = play / pause, round keys = player buttons ===== -->
+    <div class="arrange-bar" id="arrangeBar" hidden>
+      <span>Drag any control where you want it</span>
+      <button type="button" id="arrangeReset">Reset</button>
+      <button type="button" id="arrangeDone" class="done">Done</button>
+    </div>
+
     <section class="controls" id="controls" aria-label="Playback controls">
       <i class="skin" id="skin" aria-hidden="true"></i>
 
@@ -114,45 +120,48 @@
         <button class="chip hidden" id="viewBadge" type="button" title="Reset zoom and position"></button>
       </div>
 
-      <div class="seek-row">
+      <div class="seek-row" data-mv="bar">
         <span class="time" id="currentTime">0:00</span>
         <input id="seek" class="range" type="range" min="0" max="1000" value="0" aria-label="Seek video">
         <span class="time" id="duration">0:00</span>
       </div>
 
       <input id="petalFile" type="file" accept="image/*">
-      <div class="pads">
-      <svg class="wdefs" width="0" height="0" aria-hidden="true"><defs><linearGradient id="gCyan" gradientUnits="userSpaceOnUse" x1="60" y1="40" x2="340" y2="360"><stop offset="0" stop-color="#9af6ff"/><stop offset=".55" stop-color="#3fd6ee"/><stop offset="1" stop-color="#1798bd"/></linearGradient><linearGradient id="gViolet" gradientUnits="userSpaceOnUse" x1="60" y1="40" x2="340" y2="360"><stop offset="0" stop-color="#f6ecff"/><stop offset=".5" stop-color="#c79bff"/><stop offset="1" stop-color="#8650e0"/></linearGradient></defs></svg>
-      <div class="well cyan">
-        <div class="petal-glass" aria-hidden="true"><div class="pic"></div></div>
-        <button class="pad-btn petal" id="speedUp" type="button" aria-label="Speed (tap: faster, hold: normal)" title="Speed (tap: faster, hold: normal)">
-          <svg viewBox="0 0 400 400" aria-hidden="true"><g class="pt"><path class="body" d="M237.89 142.33L319.56 95.18A159.00 159.00 0 0 0 80.44 95.18L162.11 142.33A69.00 69.00 0 0 1 237.89 142.33Z" stroke-width="46.00"/><g class="ico" transform="translate(200.0 48.0) scale(3.8) translate(-12 -12)"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></g><text id="speedLabel" class="lab" x="200.0" y="114.0" text-anchor="middle">1×</text></g></svg>
+      <div class="pads" data-n="3">
+      <svg class="wdefs" width="0" height="0" aria-hidden="true"></svg>
+      <div class="well cyan" data-mv="left">
+        <div class="petal-glass" aria-hidden="true"><div class="pic"><canvas></canvas></div></div>
+        <button class="pad-btn petal" id="speedUp" type="button" aria-label="Faster" title="Speed (tap: faster, hold: normal)">
+          <svg viewBox="0 0 400 400" aria-hidden="true"><g class="pt"><path class="body" d=""/><g class="ico"><g class="ic ic-cycle"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></g><g class="ic ic-up"><path d="m17 11-5-5-5 5M17 18l-5-5-5 5"/></g></g><text id="speedLabel" class="lab" text-anchor="middle">1×</text></g></svg>
         </button>
-        <button class="pad-btn petal" id="backward" type="button" aria-label="Back 10 seconds" title="Back (hold to keep going)">
-          <svg viewBox="0 0 400 400" aria-hidden="true"><g class="pt"><path class="body" d="M131.11 196.02L49.44 148.87A159.00 159.00 0 0 0 169.00 355.95L169.00 261.64A69.00 69.00 0 0 1 131.11 196.02Z" stroke-width="46.00"/><g class="ico" transform="translate(89.1 264.0) scale(4.2) translate(-12 -12)"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><text id="backLabel" class="lab-in" x="12" y="15.3" text-anchor="middle">10</text></g></g></svg>
+        <button class="pad-btn petal" id="speedDown" type="button" aria-label="Slower" title="Slower">
+          <svg viewBox="0 0 400 400" aria-hidden="true"><g class="pt"><path class="body" d=""/><g class="ico"><g class="ic"><path d="m7 6 5 5 5-5M7 13l5 5 5-5"/></g></g></g></svg>
         </button>
         <button class="pad-btn petal" id="forward" type="button" aria-label="Forward 10 seconds" title="Forward (hold to keep going)">
-          <svg viewBox="0 0 400 400" aria-hidden="true"><g class="pt"><path class="body" d="M231.00 261.64L231.00 355.95A159.00 159.00 0 0 0 350.56 148.87L268.89 196.02A69.00 69.00 0 0 1 231.00 261.64Z" stroke-width="46.00"/><g class="ico" transform="translate(310.9 264.0) scale(4.2) translate(-12 -12)"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><text id="fwdLabel" class="lab-in" x="12" y="15.3" text-anchor="middle">10</text></g></g></svg>
+          <svg viewBox="0 0 400 400" aria-hidden="true"><g class="pt"><path class="body" d=""/><g class="ico"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><text id="fwdLabel" class="lab-in" x="12" y="15.3" text-anchor="middle">10</text></g></g></svg>
+        </button>
+        <button class="pad-btn petal" id="backward" type="button" aria-label="Back 10 seconds" title="Back (hold to keep going)">
+          <svg viewBox="0 0 400 400" aria-hidden="true"><g class="pt"><path class="body" d=""/><g class="ico"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><text id="backLabel" class="lab-in" x="12" y="15.3" text-anchor="middle">10</text></g></g></svg>
         </button>
       </div>
       <div class="mid">
-        <button class="reel-btn pill" id="playPause" type="button" aria-label="Play video">
+        <button class="reel-btn pill" id="playPause" data-mv="play" type="button" aria-label="Play video">
           <svg class="pg" viewBox="-12 -12 24 24" aria-hidden="true"><path class="g-play" d="M-4 -6L6.5 0L-4 6Z"/><g class="g-pause"><rect x="-6" y="-6.4" width="4.2" height="12.8" rx="1.8"/><rect x="1.8" y="-6.4" width="4.2" height="12.8" rx="1.8"/></g></svg>
         </button>
-        <button class="pad-btn pill" id="loopToggle" type="button" aria-pressed="false" aria-label="Loop video" title="Loop">
+        <button class="pad-btn pill" id="loopToggle" data-mv="loop" type="button" aria-pressed="false" aria-label="Loop video" title="Loop">
           <svg class="pg" viewBox="0 0 24 24" aria-hidden="true"><path d="m17 2 4 4-4 4M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v1a4 4 0 0 1-4 4H3"/></svg>
         </button>
       </div>
-      <div class="well violet">
-        <div class="petal-glass" aria-hidden="true"><div class="pic"></div></div>
-        <button class="pad-btn petal" id="settingsToggle" type="button" aria-label="Settings" aria-expanded="false" title="Settings">
-          <svg viewBox="0 0 400 400" aria-hidden="true"><g class="pt"><path class="body" d="M237.89 142.33L319.56 95.18A159.00 159.00 0 0 0 80.44 95.18L162.11 142.33A69.00 69.00 0 0 1 237.89 142.33Z" stroke-width="46.00"/><g class="ico" transform="translate(200.0 72.0) scale(4.0) translate(-12 -12)"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/></g></g></svg>
+      <div class="well violet" data-mv="right">
+        <div class="petal-glass" aria-hidden="true"><div class="pic"><canvas></canvas></div></div>
+        <button class="pad-btn petal" id="settingsToggle" type="button" aria-label="Settings" title="Settings" aria-expanded="false">
+          <svg viewBox="0 0 400 400" aria-hidden="true"><g class="pt"><path class="body" d=""/><g class="ico"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/></g></g></svg>
         </button>
-        <button class="pad-btn petal" id="adjustToggle" type="button" aria-label="Move and zoom video" aria-pressed="false" title="Move and zoom video">
-          <svg viewBox="0 0 400 400" aria-hidden="true"><g class="pt"><path class="body" d="M131.11 196.02L49.44 148.87A159.00 159.00 0 0 0 169.00 355.95L169.00 261.64A69.00 69.00 0 0 1 131.11 196.02Z" stroke-width="46.00"/><g class="ico" transform="translate(89.1 264.0) scale(4.0) translate(-12 -12)"><path d="M12 2v20M2 12h20M15 19l-3 3-3-3M19 9l3 3-3 3M5 9l-3 3 3 3M9 5l3-3 3 3"/></g></g></svg>
+        <button class="pad-btn petal" id="adjustToggle" type="button" aria-label="Move and zoom video" title="Move and zoom video" aria-pressed="false">
+          <svg viewBox="0 0 400 400" aria-hidden="true"><g class="pt"><path class="body" d=""/><g class="ico"><path d="M12 2v20M2 12h20M15 19l-3 3-3-3M19 9l3 3-3 3M5 9l-3 3 3 3M9 5l3-3 3 3"/></g></g></svg>
         </button>
         <button class="pad-btn petal" id="fsToggle" type="button" aria-label="Fullscreen" title="Fullscreen">
-          <svg viewBox="0 0 400 400" aria-hidden="true"><g class="pt"><path class="body" d="M231.00 261.64L231.00 355.95A159.00 159.00 0 0 0 350.56 148.87L268.89 196.02A69.00 69.00 0 0 1 231.00 261.64Z" stroke-width="46.00"/><g class="ico" transform="translate(310.9 264.0) scale(4.0) translate(-12 -12)"><path id="fsPath" d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></g></g></svg>
+          <svg viewBox="0 0 400 400" aria-hidden="true"><g class="pt"><path class="body" d=""/><g class="ico"><path id="fsPath" d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></g></g></svg>
         </button>
       </div>
       </div>

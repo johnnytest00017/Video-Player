@@ -1,6 +1,8 @@
 /* Look: accent + shell colours, the picture / circuit skin behind the controls. Applies CSS variables; the Look tab (settings.js) edits them. */
 import { look, saveLook, LOOK_DEFAULTS, emit } from './state.js';
 import { skin } from './dom.js';
+import { layoutPads } from './pads.js';
+import { refreshFx } from './petalfx.js';
 
 const IMG_KEY = 'avp.skinimg.v1';
 let img = '';
@@ -41,8 +43,14 @@ export function applyLook() {
   r.setProperty('--pgap', clampN(look.padGap, -20, 400, 96) + 'px');
   r.setProperty('--pic-op', String(clampN(look.petalOp, 0, 100, 100) / 100));
   r.setProperty('--pic-blur', clampN(look.petalBlur, 0, 40, 12) + 'px');
-  document.documentElement.classList.toggle('has-petal-img', !!pimg);
-  document.querySelectorAll('.pic').forEach(e => { e.style.backgroundImage = pimg ? `url("${pimg}")` : 'none'; });
+  const mode = look.petalMode;
+  document.documentElement.classList.toggle('has-petal-img', (mode === 1 && !!pimg) || mode === 2 || mode === 3);
+  document.documentElement.dataset.pmode = String(mode);
+  document.querySelectorAll('.pic').forEach(e => { e.style.backgroundImage = pimg && mode === 1 ? `url("${pimg}")` : 'none'; });
+  r.setProperty('--ico', /^#[0-9a-f]{6}$/i.test(look.icoColor) ? look.icoColor : '#ebf1fa');
+  r.setProperty('--icos', String(clampN(look.icoSize, 50, 200, 100) / 100));
+  layoutPads(look.padPetals, clampN(look.icoSize, 50, 200, 100));
+  refreshFx();
   const kind = look.skin === 'image' && !img ? 'none' : look.skin;
   skin.className = 'skin ' + kind;
   skin.style.backgroundImage = kind === 'circuit' ? `url("${CIRCUIT}")` : kind === 'image' ? `url("${img}")` : 'none';
@@ -90,7 +98,7 @@ export function loadPetalFile(file) {
         c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
         pimg = c.toDataURL('image/jpeg', .85);
         try { localStorage.setItem(PIMG_KEY, pimg); } catch (e) { alert('The picture is used now, but it is too big to be remembered for next time.'); }
-        applyLook(); emit('look');
+        look.petalMode = 1; saveLook(); applyLook(); emit('look');
         resolve(true);
       } catch (e) { resolve(false); }
       URL.revokeObjectURL(url);
