@@ -1,9 +1,9 @@
 /* Arrange the controls: seek bar, left pad, right pad, play, loop.
    Drag them (optionally snapping to a grid) or fine-tune with sliders: X, Y and size for the selected control. Everything is remembered. */
-const KEY = 'avp.layout.v3', GKEY = 'avp.layout.grid.v1';
+const KEY = 'avp.layout.v4', GKEY = 'avp.layout.grid.v1';
 const NAMES = { bar: 'Seek bar', left: 'Left pad', right: 'Right pad', play: 'Play', loop: 'Loop' };
 /* where everything sits unless the user moves it: [x px, y px, size %] */
-const DEFAULT = { left: [-34, -60, 100], right: [34, 60, 100], play: [0, 60, 100], loop: [0, 60, 100], bar: [0, 60, 112] };
+const DEFAULT = { left: [-34, -60, 100], right: [34, -60, 100], play: [0, -60, 100], loop: [0, -60, 100], bar: [0, -60, 112] };
 let pos = {}, grid = { size: 16, snap: true };
 try { pos = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { pos = {}; }
 try { grid = Object.assign(grid, JSON.parse(localStorage.getItem(GKEY) || '{}')); } catch (e) { /* ignore */ }

@@ -8,8 +8,8 @@ const PARAMS = {
 };
 /* which petal slot (0 = top, clockwise) each button takes */
 const SLOTS = {
-  left:  { 3: { fsToggle: 0, backward: 1, speedUp: 2 }, 6: { fsToggle: 0, backward: 2, speedUp: 4 }, 8: { fsToggle: 0, backward: 2, speedUp: 4, speedDown: 6 } },
-  right: { 3: { settingsToggle: 0, forward: 1, adjustToggle: 2 }, 6: { settingsToggle: 0, forward: 2, adjustToggle: 4 }, 8: { settingsToggle: 0, forward: 2, adjustToggle: 4 } }
+  left:  { 3: { fsToggle: 0, backward: 1 }, 6: { fsToggle: 0, backward: 2 }, 8: { fsToggle: 0, backward: 2 } },
+  right: { 3: { settingsToggle: 0, forward: 2 }, 6: { settingsToggle: 0, forward: 4 }, 8: { settingsToggle: 0, forward: 6 } }
 };
 const ALL = { left: ['fsToggle', 'speedUp', 'speedDown', 'backward'], right: ['settingsToggle', 'adjustToggle', 'forward'] };
 const WIDE = new Set(['forward', 'backward']);   // these two react to a press anywhere in their slice of the pad, not just on the petal
