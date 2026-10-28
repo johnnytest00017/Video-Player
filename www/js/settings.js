@@ -16,7 +16,7 @@ import { applySubStyle } from './subtitles.js';
 import { pickVideoFile, pickSrtFile, pickExtFile, removeSrt } from './media.js';
 import * as ext from './extended.js';
 import { haptic, hapticDemo } from './haptics.js';
-import { setLook, loadSkinFile, clearSkinImage, hasSkinImage, loadPetalFile, clearPetalImage, hasPetalImage } from './look.js';
+import { setLook, loadSkinFile, clearSkinImage, hasSkinImage, loadPetalFile, clearPetalImage, hasPetalImage, parseColor } from './look.js';
 import { skinFile, petalFile } from './dom.js';
 import { startArranging, resetLayout } from './arrange.js';
 
@@ -138,7 +138,7 @@ function toggle({ label, sub, get, set }) {
 }
 
 /* A row of round colour swatches + a "pick any colour" swatch. */
-function swatches({ label, colors, get, set }) {
+function swatches({ label, colors, get, set, raw }) {
   const f = h('div', 'field');
   f.append(h('div', 'field-name', label));
   const row = h('div', 'swatches'); row.setAttribute('role', 'radiogroup'); row.setAttribute('aria-label', label);
@@ -153,11 +153,22 @@ function swatches({ label, colors, get, set }) {
   pick.addEventListener('input', () => { set(pick.value); syncAll(); });
   any.append(pick); row.append(any);
   f.append(row);
+  /* type any CSS colour: #hex, rgb(), rgba(), hsl() … */
+  const txt = Object.assign(document.createElement('input'), { type: 'text', placeholder: raw ? '#ffd54a · rgb(255 213 74) · rgba(255,255,255,.7) · hsl()' : '#ffd54a · rgb(255 213 74) · hsl() · name', spellcheck: false, autocomplete: 'off', autocapitalize: 'off' });
+  txt.className = 'colortext'; txt.setAttribute('aria-label', label + ': type any colour');
+  txt.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); txt.blur(); } });
+  txt.addEventListener('change', () => {
+    const v = parseColor(txt.value, !!raw);
+    if (v) { txt.classList.remove('bad'); set(v); syncAll(); } else txt.classList.toggle('bad', !!txt.value.trim());
+  });
+  f.append(txt);
   syncs.push(() => {
     const cur = String(get()).toLowerCase();
     btns.forEach(([hex, b]) => b.setAttribute('aria-checked', String(hex === cur)));
     const custom = !colors.some(([hex]) => hex === cur);
-    any.classList.toggle('on', custom); any.style.setProperty('--c', cur); pick.value = cur;
+    const hx = /^#[0-9a-f]{6}$/.test(cur) ? cur : (parseColor(cur) || '#000000');
+    any.classList.toggle('on', custom); any.style.setProperty('--c', cur); pick.value = hx;
+    if (document.activeElement !== txt) { txt.value = custom ? String(get()) : ''; txt.classList.remove('bad'); }
   });
   return f;
 }
@@ -470,7 +481,7 @@ const writeList = list => { store.list = JSON.stringify(list); saveJSON(PRESET_K
     note('Move: drag the seek bar, each pad, play and loop anywhere — even off the edge of the screen. Tap Done when finished.'),
 
     group('Icons'),
-    swatches({ label: 'Icon colour', colors: [['#ebf1fa', 'Soft white'], ['#ffffff', 'White'], ['#ffd54a', 'Yellow'], ['#6ee7ff', 'Cyan'], ['#c9a2ff', 'Violet'], ['#ff6b81', 'Red']], get: () => look.icoColor, set: v => setLook({ icoColor: v }) }),
+    swatches({ label: 'Icon colour', raw: true, colors: [['#ebf1fa', 'Soft white'], ['#ffffff', 'White'], ['#ffd54a', 'Yellow'], ['#6ee7ff', 'Cyan'], ['#c9a2ff', 'Violet'], ['#ff6b81', 'Red']], get: () => look.icoColor, set: v => setLook({ icoColor: v }) }),
     slider({ label: 'Icon size', min: 50, max: 200, step: 5, get: () => look.icoSize, set: v => setLook({ icoSize: v }), def: LOOK_DEFAULTS.icoSize }),
 
     group('Behind the petals'),

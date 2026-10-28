@@ -29,6 +29,22 @@ const CIRCUIT = 'data:image/svg+xml,' + encodeURIComponent(
   '<circle cx="38" cy="30" r="2.4"/><circle cx="86" cy="44" r="2.4"/><circle cx="26" cy="104" r="2.4"/><circle cx="84" cy="116" r="2.4"/><circle cx="110" cy="32" r="2.4"/><circle cx="98" cy="78" r="2.4"/>' +
   '<rect x="118" y="86" width="22" height="14" rx="2"/><path d="M122 86v-4M129 86v-4M136 86v-4M122 100v4M129 100v4M136 100v4"/></svg>');
 
+/* Any CSS colour: #rgb #rgba #rrggbb #rrggbbaa (the # is optional), rgb() rgba() hsl() hsla() hwb(), names, "rgb(255 0 0 / .5)" …
+   keepAlpha → returns the colour as typed (valid); otherwise a plain #rrggbb (alpha dropped). Returns null when it isn't a colour. */
+export function parseColor(s, keepAlpha) {
+  s = String(s == null ? '' : s).trim();
+  if (!s) return null;
+  const probe = /^[0-9a-f]{3,4}$|^[0-9a-f]{6}$|^[0-9a-f]{8}$/i.test(s) ? '#' + s : s;
+  if (!(window.CSS && CSS.supports && CSS.supports('color', probe))) return null;
+  if (keepAlpha) return probe;
+  const c = document.createElement('canvas').getContext('2d');
+  c.fillStyle = '#000'; c.fillStyle = probe;
+  const v = String(c.fillStyle);
+  if (v[0] === '#') return v.toLowerCase();
+  const m = v.match(/[\d.]+/g);
+  return m ? '#' + m.slice(0, 3).map(n => Math.round(+n).toString(16).padStart(2, '0')).join('') : null;
+}
+
 const clampN = (v, a, b, d) => (typeof v === 'number' && isFinite(v) ? Math.min(b, Math.max(a, v)) : d);
 
 export function applyLook() {
@@ -47,7 +63,7 @@ export function applyLook() {
   document.documentElement.classList.toggle('has-petal-img', (mode === 1 && !!pimg) || mode === 2 || mode === 3);
   document.documentElement.dataset.pmode = String(mode);
   document.querySelectorAll('.pic').forEach(e => { e.style.backgroundImage = pimg && mode === 1 ? `url("${pimg}")` : 'none'; });
-  r.setProperty('--ico', /^#[0-9a-f]{6}$/i.test(look.icoColor) ? look.icoColor : '#ebf1fa');
+  r.setProperty('--ico', parseColor(look.icoColor, true) || '#ebf1fa');
   r.setProperty('--icos', String(clampN(look.icoSize, 50, 200, 100) / 100));
   layoutPads(look.padPetals, clampN(look.icoSize, 50, 200, 100));
   refreshFx();
