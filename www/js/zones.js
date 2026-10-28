@@ -1,20 +1,20 @@
 /* Invisible press areas (no element, just geometry, so they never block anything underneath):
-     backward : from the left edge of the phone to half way between the backward petal and play, from the top of the petal to the bottom of the phone
+     backward : from the left edge of the phone to half way between the backward petal and play, from the top of the petal down to the seek bar
      play     : between those two half-way lines, from the pill's bottom up to twice the pill's height above it
      forward  : mirror of backward
    A press that lands on a real control (a button, the seek bar, the settings sheet…) is left alone; anything else inside an area is sent to its key. */
-import { backward, forward, playPause } from './dom.js';
+import { backward, forward, playPause, seek } from './dom.js';
 
 const UP = 2;                       // play area reaches up this many pill-heights above the pill
 const ptl = b => { const e = b.querySelector('.body'); return (e || b).getBoundingClientRect(); };
 
 export function zoneRects() {
   const bb = ptl(backward), fb = ptl(forward), pr = playPause.getBoundingClientRect();
-  const cx = r => r.left + r.width / 2, W = innerWidth, H = innerHeight;
+  const cx = r => r.left + r.width / 2, W = innerWidth, H = Math.min(innerHeight, seek.getBoundingClientRect().top);   // the side areas stop where the seek bar's touch area starts
   const xl = (cx(bb) + cx(pr)) / 2, xr = (cx(pr) + cx(fb)) / 2;
   return {
-    back: { l: -1e4, r: xl, t: bb.top, b: H + 1e4, el: backward },
-    fwd: { l: xr, r: W + 1e4, t: fb.top, b: H + 1e4, el: forward },
+    back: { l: -1e4, r: xl, t: bb.top, b: H, el: backward },
+    fwd: { l: xr, r: W + 1e4, t: fb.top, b: H, el: forward },
     play: { l: xl, r: xr, t: pr.top - UP * pr.height, b: pr.bottom + 5, el: playPause }
   };
 }

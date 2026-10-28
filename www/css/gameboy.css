@@ -5,7 +5,7 @@ html, body, .app, .stage { background: #000; }
 .stage.full { --well: 118px; }
 
 /* ---------- video: a rounded card with a margin all round ---------- */
-.stage:not(.full) .video-wrap { margin: calc(10px + env(safe-area-inset-top, 0px)) 14px 0; flex-basis: calc(var(--dh) - 24px); }
+.stage:not(.full) .video-wrap { margin: calc(10px + env(safe-area-inset-top, 0px)) 0 0; flex-basis: calc(var(--dh) - 24px); }
 .stage:not(.full):not(.round-off) .video-wrap::before,
 .stage:not(.full):not(.round-off) .video-wrap::after { content: ''; position: absolute; z-index: 6; top: -1px; width: calc(var(--corner) + 1px); height: calc(var(--corner) + 1px); pointer-events: none; }
 .stage:not(.full):not(.round-off) .video-wrap::before { left: -1px; background: radial-gradient(circle var(--corner) at calc(var(--corner) + 1px) calc(var(--corner) + 1px), transparent calc(var(--corner) - .6px), #000 calc(var(--corner) + .4px)); }
@@ -200,7 +200,7 @@ input[type=range]::-moz-range-progress { background: rgba(235,241,250,.76); }
 .seek-wrap { position: relative; flex: 1; min-width: 0; height: 5px; }
 .seek-glass { position: absolute; inset: 0; border-radius: 3px; overflow: hidden; background: rgba(235,241,250,.76); pointer-events: none; }
 .seek-glass .pic { inset: -30%; }
-#seek { position: absolute; left: 0; top: -11px; width: 100%; height: 27px; margin: 0; background: none; -webkit-appearance: none; appearance: none; }
+#seek { position: absolute; left: 0; top: -8px; width: 100%; height: 21px; margin: 0; background: none; -webkit-appearance: none; appearance: none; }
 #seek::-webkit-slider-runnable-track { height: 5px; border-radius: 3px; background: linear-gradient(to right, transparent 0 var(--p), rgba(0,0,0,.66) var(--p) 100%); }
 #seek::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 0; height: 5px; margin: 0; border: 0; background: transparent; box-shadow: none; }
 #seek::-moz-range-track { height: 5px; border-radius: 3px; background: rgba(0,0,0,.66); }
